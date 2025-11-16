@@ -72,6 +72,10 @@ class JobAssignmentController extends Controller
 
         return Inertia::render('JobAssignments/Show', [
             'assignment' => $assignment,
+            'supervisors' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['super-admin', 'admin']))
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            'users' => User::orderBy('name')->get(['id', 'name']),
             'can' => [
                 'update' => Gate::allows('update', $assignment),
                 'delete' => Gate::allows('delete', $assignment),
@@ -243,7 +247,7 @@ class JobAssignmentController extends Controller
 
         $assignment->update($data);
 
-        return redirect()->route('job_assignments.deliver', $assignment)->with('success', 'Service completed.');
+        return redirect()->route('job_assignments.show', $assignment)->with('success', 'Service completed.');
     }
 
     // Deliver: Ready for delivery → delivery confirmed
@@ -272,6 +276,10 @@ class JobAssignmentController extends Controller
             'billing_confirmed_by' => 'required|exists:users,id',
         ]);
 
+        // Convert ID → Name (column is string)
+        $supervisor = User::findOrFail($data['billing_confirmed_by']);
+        $data['billing_confirmed_by'] = $supervisor->name;
+
         $data['stage'] = 'ready_for_delivery';
         $data['position'] = JobAssignment::where('stage', 'ready_for_delivery')->max('position') + 1;
 
@@ -280,23 +288,59 @@ class JobAssignmentController extends Controller
         return back()->with('success', 'Marked as ready for delivery.');
     }
 
-    public function confirmDelivery(Request $request, JobAssignment $assignment)
+
+    // Generate OTP & Send WhatsApp
+// Generate OTP & Send WhatsApp
+    public function generateOtp(Request $request, JobAssignment $assignment)
     {
         $this->authorize('verifyDelivery', $assignment);
 
-        $data = $request->validate([
-            'delivered_otp' => 'required|string|size:6',
-            'billing_amount' => 'required|numeric|min:0',
+        $request->validate(['deliver_by' => 'required|exists:users,id']);
+
+        // EAGER LOAD NEEDED RELATIONSHIPS
+        $assignment->loadMissing([
+            'jobCard.serviceInward.contact',
         ]);
 
-        $data['stage'] = 'delivered';
-        $data['delivered_confirmed_at'] = now();
-        $data['delivered_confirmed_by'] = auth()->user()->name;
-        $data['position'] = JobAssignment::where('stage', 'delivered')->max('position') + 1;
+        // SAFETY CHECK
+        if (!$assignment->jobCard?->serviceInward?->contact?->mobile) {
+            return back()->withErrors(['otp' => 'Customer mobile number is missing.']);
+        }
 
-        $assignment->update($data);
+        $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $deliverBy = User::findOrFail($request->deliver_by);
 
-        return redirect()->route('job_assignments.kanban')->with('success', 'Delivery confirmed.');
+        $assignment->update([
+            'delivered_otp' => $otp,
+            'delivered_confirmed_by' => $deliverBy->name,
+        ]);
+
+        $phone = $assignment->jobCard->serviceInward->contact->mobile;
+
+        // TODO: Send WhatsApp
+        // WhatsAppService::send($phone, "Your delivery OTP: {$otp}");
+
+        \Log::info("OTP {$otp} sent to {$phone} for Job Assignment #{$assignment->id}");
+
+        return back()->with('success', 'OTP sent via WhatsApp.');
+    }
+// Update confirmDelivery to check OTP
+    public function confirmDelivery(Request $request, JobAssignment $assignment)
+    {
+        $this->authorize('verifyDelivery', $assignment);
+        $request->validate(['delivered_otp' => 'required|digits:6']);
+
+        if ($request->delivered_otp !== $assignment->delivered_otp) {
+            return back()->withErrors(['delivered_otp' => 'Invalid OTP']);
+        }
+
+        $assignment->update([
+            'stage' => 'delivered',
+            'delivered_confirmed_at' => now(),
+            'position' => JobAssignment::where('stage', 'delivered')->max('position') + 1,
+        ]);
+
+        return redirect()->route('job_assignments.show', $assignment)->with('success', 'Delivery confirmed.');
     }
 
     // Admin Close: Final verification and close
@@ -351,7 +395,7 @@ class JobAssignmentController extends Controller
         // Trigger merit points calculation via observer
         // (already handled in JobAssignmentObserver)
 
-        return redirect()->route('job_assignments.kanban')->with('success', 'Job closed successfully.');
+        return redirect()->route('job_assignments.index')->with('success', 'Job closed successfully.');
     }
 
     // Trash & Restore

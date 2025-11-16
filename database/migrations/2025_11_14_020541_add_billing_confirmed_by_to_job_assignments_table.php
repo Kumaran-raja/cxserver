@@ -12,6 +12,7 @@ return new class extends Migration {
     {
         Schema::table('job_assignments', function (Blueprint $table) {
             $table->foreignId('billing_confirmed_by')->nullable()->after('billing_amount')->constrained('users');
+            $table->foreignId('delivered_confirmed_by_id')->nullable()->after('billing_confirmed_by')->constrained('users');
         });
     }
 

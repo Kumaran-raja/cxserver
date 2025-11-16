@@ -534,9 +534,14 @@ export default function Index() {
                                             : '—'}
                                     </TableCell>
                                     <TableCell>
-                                        {a.billing_amount > 0
-                                            ? `₹${a.billing_amount.toFixed(2)}`
+                                        {/*{a.billing_amount > 0*/}
+                                        {/*    ? `₹${a.billing_amount.toFixed(2)}`*/}
+                                        {/*    : '—'}*/}
+
+                                        {a.billing_amount != null
+                                            ? `₹${Number(a.billing_amount).toFixed(2)}`
                                             : '—'}
+
                                     </TableCell>
                                     <TableCell>
                                         {a.merit_points > 0
