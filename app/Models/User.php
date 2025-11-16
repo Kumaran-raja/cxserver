@@ -30,6 +30,7 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+
     protected function casts(): array
     {
         return [
@@ -133,6 +134,12 @@ class User extends Authenticatable
         if ($this->profile_photo_path && Storage::disk('public')->exists($this->profile_photo_path)) {
             Storage::disk('public')->delete($this->profile_photo_path);
         }
+    }
+
+    public function scopeTechnicians($query)
+    {
+        // Users that have the role named "technician"
+        return $query->whereHas('roles', fn ($q) => $q->where('name', 'engineer'));
     }
 
 }

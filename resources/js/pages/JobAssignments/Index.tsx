@@ -2,7 +2,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link, usePage, router } from '@inertiajs/react';
 import { useRoute } from 'ziggy-js';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, JSX } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -14,7 +14,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, Search, RotateCcw, X } from 'lucide-react';
+import { Plus, Trash2, Search, RotateCcw, X, ClipboardCheck } from 'lucide-react';
 import DataTable from '@/components/table/DataTable';
 import TableActions from '@/components/table/TableActions';
 import {
@@ -39,10 +39,16 @@ interface Assignment {
     user: { id: number; name: string };
     status: { id: number; name: string };
     assigned_at: string;
-    stage: string | null;
     started_at: string | null;
     completed_at: string | null;
     time_spent_minutes: number;
+    stage: string | null;
+    position: number;
+    merit_points: number;
+    customer_satisfaction_rating: number | null;
+    billing_amount: number;
+    delivered_confirmed_at: string | null;
+    admin_verifier: { id: number; name: string } | null;
     deleted_at: string | null;
 }
 
@@ -58,13 +64,13 @@ interface Props {
     };
     filters: {
         search?: string;
-        status_filter?: string;
+        stage?: string;
         technician_filter?: string;
         per_page?: string;
     };
-    statuses: { id: number; name: string }[];
+    stages: string[];
     technicians: { id: number; name: string }[];
-    can: { create: boolean; delete: boolean };
+    can: { create: boolean; admin_close: boolean };
     trashedCount: number;
 }
 
@@ -74,13 +80,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Index() {
-    const { assignments, filters, statuses, technicians, can, trashedCount } =
+    const { assignments, filters, stages, technicians, can, trashedCount } =
         usePage().props as unknown as Props;
     const route = useRoute();
 
     const [localFilters, setLocalFilters] = useState({
         search: filters.search || '',
-        status_filter: filters.status_filter || 'all',
+        stage: filters.stage || 'all',
         technician_filter: filters.technician_filter || 'all',
         per_page: filters.per_page || '50',
     });
@@ -91,7 +97,7 @@ export default function Index() {
     useEffect(() => {
         setLocalFilters({
             search: filters.search || '',
-            status_filter: filters.status_filter || 'all',
+            stage: filters.stage || 'all',
             technician_filter: filters.technician_filter || 'all',
             per_page: filters.per_page || '50',
         });
@@ -101,8 +107,8 @@ export default function Index() {
     const buildPayload = useCallback(
         () => ({
             search: localFilters.search || undefined,
-            status_filter:
-                localFilters.status_filter === 'all' ? undefined : localFilters.status_filter,
+            stage:
+                localFilters.stage === 'all' ? undefined : localFilters.stage,
             technician_filter:
                 localFilters.technician_filter === 'all'
                     ? undefined
@@ -136,11 +142,11 @@ export default function Index() {
 
     // Clear single filter
     const clearFilter = useCallback((
-        key: 'search' | 'status_filter' | 'technician_filter' | 'per_page'
+        key: 'search' | 'stage' | 'technician_filter' | 'per_page'
     ) => {
         const updates: Partial<typeof localFilters> = {};
         if (key === 'search') updates.search = '';
-        if (key === 'status_filter') updates.status_filter = 'all';
+        if (key === 'stage') updates.stage = 'all';
         if (key === 'technician_filter') updates.technician_filter = 'all';
         if (key === 'per_page') updates.per_page = '50';
 
@@ -163,12 +169,11 @@ export default function Index() {
             );
         }
 
-        if (localFilters.status_filter !== 'all') {
-            const status = statuses.find(s => s.id === parseInt(localFilters.status_filter));
+        if (localFilters.stage !== 'all') {
             badges.push(
-                <Badge key="status" variant="secondary" className="text-xs flex items-center gap-1">
-                    Status: {status?.name || 'Unknown'}
-                    <button onClick={() => clearFilter('status_filter')} className="ml-1 hover:bg-muted rounded-sm p-0.5">
+                <Badge key="stage" variant="secondary" className="text-xs flex items-center gap-1">
+                    Stage: {localFilters.stage}
+                    <button onClick={() => clearFilter('stage')} className="ml-1 hover:bg-muted rounded-sm p-0.5">
                         <X className="h-3 w-3" />
                     </button>
                 </Badge>
@@ -208,7 +213,7 @@ export default function Index() {
         }
 
         return badges;
-    }, [localFilters, statuses, technicians, clearFilter]);
+    }, [localFilters, technicians, clearFilter]);
 
     // Handle per-page change from DataTable
     const handlePerPageChange = (perPage: number) => {
@@ -229,22 +234,28 @@ export default function Index() {
                                 Job Assignments
                             </h1>
                             <p className="mt-1 text-sm text-black/30">
-                                Assign technicians to jobs
+                                Manage service job assignments
                             </p>
                         </div>
                         <div className="flex gap-3">
                             {can.create && (
                                 <Button asChild>
                                     <Link href={route('job_assignments.create')}>
-                                        <Plus className="mr-2 h-4 w-4" />
+                                        <Plus className="h-4 w-4 mr-2" />
                                         Assign Job
                                     </Link>
                                 </Button>
                             )}
+                            <Button asChild variant="outline">
+                                <Link href={route('job_assignments.kanban')}>
+                                    <ClipboardCheck className="h-4 w-4 mr-2" />
+                                    Kanban View
+                                </Link>
+                            </Button>
                             {trashedCount > 0 && (
-                                <Button variant="outline" asChild>
+                                <Button asChild variant="secondary">
                                     <Link href={route('job_assignments.trash')}>
-                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        <Trash2 className="h-4 w-4 mr-2" />
                                         Trash ({trashedCount})
                                     </Link>
                                 </Button>
@@ -254,14 +265,13 @@ export default function Index() {
 
                     <Separator />
 
-                    {/* FILTER BAR – NO PER-PAGE SELECT */}
+                    {/* Filters */}
                     <div className="flex flex-wrap gap-3 items-center">
                         {/* Search */}
-                        <div className="flex-1 min-w-[200px] relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <div className="flex items-center gap-2 flex-1 max-w-md">
                             <Input
+                                type="text"
                                 placeholder="Search by Job No, RMA, Technician..."
-                                className="pl-10 h-9"
                                 value={localFilters.search}
                                 onChange={(e) =>
                                     setLocalFilters((prev) => ({ ...prev, search: e.target.value }))
@@ -271,23 +281,23 @@ export default function Index() {
                             />
                         </div>
 
-                        {/* Status Filter */}
+                        {/* Stage Filter */}
                         <Select
-                            value={localFilters.status_filter}
+                            value={localFilters.stage}
                             onValueChange={(v) => {
-                                setLocalFilters((prev) => ({ ...prev, status_filter: v }));
-                                navigate({ status_filter: v });
+                                setLocalFilters((prev) => ({ ...prev, stage: v }));
+                                navigate({ stage: v });
                             }}
                             disabled={isNavigating}
                         >
                             <SelectTrigger className="w-48 h-9">
-                                <SelectValue placeholder="All Status" />
+                                <SelectValue placeholder="All Stages" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                {statuses.map((s) => (
-                                    <SelectItem key={s.id} value={String(s.id)}>
-                                        {s.name}
+                                <SelectItem value="all">All Stages</SelectItem>
+                                {stages.map((s) => (
+                                    <SelectItem key={s} value={s}>
+                                        {s.replace('_', ' ').toUpperCase()}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -359,8 +369,14 @@ export default function Index() {
                                 <TableHead>Technician</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Assigned</TableHead>
+                                <TableHead>Started</TableHead>
+                                <TableHead>Completed</TableHead>
                                 <TableHead>Stage</TableHead>
                                 <TableHead>Time Spent</TableHead>
+                                <TableHead>Billing</TableHead>
+                                <TableHead>Merit Points</TableHead>
+                                <TableHead>Rating</TableHead>
+                                <TableHead>Admin Verifier</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -386,21 +402,41 @@ export default function Index() {
                                     <TableCell>
                                         {format(new Date(a.assigned_at), 'dd MMM yyyy HH:mm')}
                                     </TableCell>
-
+                                    <TableCell>
+                                        {a.started_at ? format(new Date(a.started_at), 'dd MMM yyyy HH:mm') : '—'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {a.completed_at ? format(new Date(a.completed_at), 'dd MMM yyyy HH:mm') : '—'}
+                                    </TableCell>
                                     <TableCell>
                                         {a.stage ? (
                                             <Badge variant="outline" className="capitalize">
-                                                {a.stage}
+                                                {a.stage.replace('_', ' ')}
                                             </Badge>
                                         ) : (
                                             <span className="text-muted-foreground">—</span>
                                         )}
                                     </TableCell>
-
                                     <TableCell>
                                         {a.time_spent_minutes > 0
                                             ? `${a.time_spent_minutes} min`
                                             : '—'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {a.billing_amount > 0
+                                            ? `₹${a.billing_amount.toFixed(2)}`
+                                            : '—'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {a.merit_points > 0 ? a.merit_points : '—'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {a.customer_satisfaction_rating
+                                            ? `${a.customer_satisfaction_rating}/5`
+                                            : '—'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {a.admin_verifier ? a.admin_verifier.name : '—'}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <TableActions
@@ -418,7 +454,18 @@ export default function Index() {
                                                     : undefined
                                             }
                                             isDeleted={!!a.deleted_at}
-                                            canDelete={can.delete}
+                                            customActions={
+                                                can.admin_close && a.stage === 'delivered' && !a.deleted_at
+                                                    ? [
+                                                        {
+                                                            label: 'Admin Close',
+                                                            icon: ClipboardCheck,
+                                                            href: route('job_assignments.close', a.id),
+                                                            className: 'text-green-600 hover:text-green-900',
+                                                        },
+                                                    ]
+                                                    : []
+                                            }
                                         />
                                     </TableCell>
                                 </TableRow>

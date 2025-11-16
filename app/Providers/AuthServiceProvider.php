@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\Blog;
 use App\Models\Contact;
 use App\Models\ContactType;
+use App\Models\JobAssignment;
 use App\Models\JobSpareRequest;
 use App\Models\OutServiceCenter;
 use App\Models\Permission;
@@ -17,6 +18,7 @@ use App\Models\User;
 use App\Policies\BlogPolicy;
 use App\Policies\ContactPolicy;
 use App\Policies\ContactTypePolicy;
+use App\Policies\JobAssignmentPolicy;
 use App\Policies\JobSpareRequestPolicy;
 use App\Policies\OutServiceCenterPolicy;
 use App\Policies\PermissionPolicy;
@@ -46,6 +48,7 @@ class AuthServiceProvider extends ServiceProvider
         OutServiceCenter::class => OutServiceCenterPolicy::class,
         ServiceInwardNote::class => ServiceInwardNotePolicy::class,
         ReadyForDelivery::class => ReadyForDeliveryPolicy::class,
+        JobAssignment::class => JobAssignmentPolicy::class,
     ];
 
     public function register(): void

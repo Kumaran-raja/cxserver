@@ -177,17 +177,22 @@ Route::middleware(['auth', 'verified'])
     });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::resource('job_assignments', JobAssignmentController::class)
-        ->names('job_assignments');
+    Route::resource('job_assignments', JobAssignmentController::class)->except(['show']);
 
-    Route::post('job_assignments/{id}/restore', [JobAssignmentController::class, 'restore'])
-        ->name('job_assignments.restore');
+    Route::get('job_assignments/kanban', [JobAssignmentController::class, 'kanban'])->name('job_assignments.kanban');
+    Route::patch('job_assignments/{assignment}/position', [JobAssignmentController::class, 'updatePosition'])->name('job_assignments.position');
 
-    Route::delete('job_assignments/{id}/force', [JobAssignmentController::class, 'forceDelete'])
-        ->name('job_assignments.forceDelete');
+    Route::get('job_assignments/{assignment}/service', [JobAssignmentController::class, 'service'])->name('job_assignments.service');
+    Route::post('job_assignments/{assignment}/start', [JobAssignmentController::class, 'startService'])->name('job_assignments.start');
+    Route::post('job_assignments/{assignment}/complete', [JobAssignmentController::class, 'completeService'])->name('job_assignments.complete');
 
-    Route::get('job_assignments/trash', [JobAssignmentController::class, 'trash'])
-        ->name('job_assignments.trash');
+    Route::get('job_assignments/{assignment}/deliver', [JobAssignmentController::class, 'deliver'])->name('job_assignments.deliver');
+    Route::post('job_assignments/{assignment}/ready', [JobAssignmentController::class, 'readyForDelivery'])->name('job_assignments.ready');
+    Route::post('job_assignments/{assignment}/confirm', [JobAssignmentController::class, 'confirmDelivery'])->name('job_assignments.confirm');
+
+    Route::get('job_assignments/{assignment}/close', [JobAssignmentController::class, 'adminClose'])->name('job_assignments.close');
+    Route::post('job_assignments/{assignment}/audit', [JobAssignmentController::class, 'audit'])->name('job_assignments.audit');
+    Route::post('job_assignments/{assignment}/close-admin', [JobAssignmentController::class, 'closeByAdmin'])->name('job_assignments.close_admin');
 
 });
 

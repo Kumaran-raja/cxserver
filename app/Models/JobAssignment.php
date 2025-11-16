@@ -22,13 +22,33 @@ class JobAssignment extends Model
         'report',
         'remarks',
         'stage',
+        'position',
+        'merit_points',
+        'customer_satisfaction_rating',
+        'engineer_note',
+        'future_note',
+        'billing_details',
+        'billing_amount',
+        'delivered_confirmed_at',
+        'delivered_confirmed_by',
+        'delivered_otp',
         'service_status_id',
+        'admin_verifier_id',
+        'admin_verified_at',
+        'admin_verification_note',
+        'auditor_id',
+        'audited_at',
+        'audit_note',
+        'is_active',
     ];
 
     protected $casts = [
         'assigned_at' => 'datetime',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
+        'delivered_confirmed_at' => 'datetime',
+        'admin_verified_at' => 'datetime',
+        'audited_at' => 'datetime',
     ];
 
     public function jobCard(): BelongsTo
@@ -44,5 +64,25 @@ class JobAssignment extends Model
     public function status(): BelongsTo
     {
         return $this->belongsTo(ServiceStatus::class, 'service_status_id');
+    }
+
+    public function adminVerifier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'admin_verifier_id');
+    }
+
+    public function auditor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'auditor_id');
+    }
+
+    public function spares(): HasMany
+    {
+        return $this->hasMany(JobAssignmentSpare::class, 'job_assignment_id');
+    }
+
+    public function notes(): HasMany
+    {
+        return $this->hasMany(JobAssignmentNote::class, 'job_assignment_id');
     }
 }

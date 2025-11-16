@@ -10,11 +10,95 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\DB;
 
 class JobAssignmentController extends Controller
 {
     use AuthorizesRequests;
 
+    // Kanban View: Grouped by stage with position sorting
+    public function kanban(Request $request)
+    {
+        $this->authorize('viewAny', JobAssignment::class);
+
+        $stages = ['assigned', 'in_progress', 'completed', 'ready_for_delivery', 'delivered', 'verified'];
+
+        $assignments = JobAssignment::with([
+            'jobCard.serviceInward.contact',
+            'user',
+            'status',
+            'adminVerifier',
+            'auditor'
+        ])
+            ->whereIn('stage', $stages)
+            ->where('is_active', true) // Only show active assignments
+            ->orderBy('position')
+            ->get()
+            ->groupBy('stage')
+            ->map(function ($items, $stage) {
+                return $items->sortBy('position')->values();
+            });
+
+        // Fill empty stages
+        foreach ($stages as $stage) {
+            if (!isset($assignments[$stage])) {
+                $assignments[$stage] = collect();
+            }
+        }
+
+        return Inertia::render('JobAssignments/Kanban', [
+            'assignments' => $assignments,
+            'stages' => $stages,
+            'can' => [
+                'create' => Gate::allows('create', JobAssignment::class),
+                'update_stage' => Gate::allows('update', [JobAssignment::class, null]),
+            ],
+        ]);
+    }
+
+    // Update position on drag (Kanban)
+    public function updatePosition(Request $request)
+    {
+        $this->authorize('update', JobAssignment::class);
+
+        $request->validate([
+            'assignment_id' => 'required|exists:job_assignments,id',
+            'stage' => 'required|in:assigned,in_progress,completed,ready_for_delivery,delivered,verified',
+            'position' => 'required|integer|min:0',
+        ]);
+
+        $assignment = JobAssignment::findOrFail($request->assignment_id);
+
+        // Allow only valid stage transitions
+        $allowedTransitions = [
+            'assigned' => ['in_progress'],
+            'in_progress' => ['completed'],
+            'completed' => ['ready_for_delivery'],
+            'ready_for_delivery' => ['delivered'],
+            'delivered' => ['verified'],
+        ];
+
+        if ($assignment->stage !== $request->stage &&
+            (!isset($allowedTransitions[$assignment->stage]) || !in_array($request->stage, $allowedTransitions[$assignment->stage]))) {
+            return response()->json(['error' => 'Invalid stage transition'], 403);
+        }
+
+        DB::transaction(function () use ($assignment, $request) {
+            // Shift existing items in target stage
+            JobAssignment::where('stage', $request->stage)
+                ->where('position', '>=', $request->position)
+                ->increment('position');
+
+            $assignment->update([
+                'stage' => $request->stage,
+                'position' => $request->position,
+            ]);
+        });
+
+        return response()->json(['success' => true]);
+    }
+
+    // Index: List view with filters
     public function index(Request $request)
     {
         $this->authorize('viewAny', JobAssignment::class);
@@ -22,47 +106,46 @@ class JobAssignmentController extends Controller
         $perPage = $request->input('per_page', 50);
         $perPage = in_array($perPage, [10, 25, 50, 100]) ? $perPage : 50;
 
-        $query = JobAssignment::with(['jobCard.serviceInward.contact', 'user', 'status'])
+        $query = JobAssignment::with(['jobCard.serviceInward.contact', 'user', 'status', 'adminVerifier'])
+            ->where('is_active', true)
             ->when($request->filled('search'), fn($q) => $q->where(function ($sq) use ($request) {
                 $search = $request->search;
                 $sq->whereHas('jobCard', fn($j) => $j->where('job_no', 'like', "%{$search}%"))
                     ->orWhereHas('jobCard.serviceInward', fn($i) => $i->where('rma', 'like', "%{$search}%"))
                     ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%"));
             }))
-            ->when($request->status_filter && $request->status_filter !== 'all', fn($q) =>
-            $q->where('service_status_id', $request->status_filter)
-            )
-            ->when($request->technician_filter && $request->technician_filter !== 'all', fn($q) =>
-            $q->where('user_id', $request->technician_filter)
-            )
+            ->when($request->filled('stage'), fn($q) => $q->where('stage', $request->stage))
+            ->when($request->filled('technician_filter'), fn($q) => $q->where('user_id', $request->technician_filter))
             ->latest('assigned_at');
 
         $assignments = $query->paginate($perPage)->withQueryString();
 
         return Inertia::render('JobAssignments/Index', [
             'assignments' => $assignments,
-            'filters' => $request->only(['search', 'status_filter', 'technician_filter', 'per_page']),
-            'statuses' => ServiceStatus::orderBy('name')->get(['id', 'name']),
-            'technicians' => User::orderBy('name')->get(['id', 'name']), // ← ADD THIS
+            'filters' => $request->only(['search', 'stage', 'technician_filter', 'per_page']),
+            'stages' => ['assigned', 'in_progress', 'completed', 'ready_for_delivery', 'delivered', 'verified'],
+            'technicians' => User::orderBy('name')->get(['id', 'name']),
             'can' => [
                 'create' => Gate::allows('create', JobAssignment::class),
-                'delete' => Gate::allows('delete', JobAssignment::class),
+                'admin_close' => Gate::allows('adminClose', JobAssignment::class),
             ],
             'trashedCount' => JobAssignment::onlyTrashed()->count(),
         ]);
     }
 
+    // Create: Assign job to engineer
     public function create()
     {
         $this->authorize('create', JobAssignment::class);
 
+
         $jobCards = JobCard::with('serviceInward.contact')
-            ->whereDoesntHave('assignments', fn($q) => $q->whereNull('completed_at'))
+            ->whereDoesntHave('assignments', fn($q) => $q->whereNull('completed_at')->where('is_active', true))
             ->get(['id', 'job_no', 'service_inward_id']);
 
-        return Inertia::render('JobAssignments/Create', [
+        return Inertia::render('JobAssignments/Assign', [
             'jobCards' => $jobCards,
-            'users' => User::orderBy('name')->get(['id', 'name']),
+            'users' => User::technicians()->orderBy('name')->get(['id', 'name']),
             'statuses' => ServiceStatus::orderBy('name')->get(['id', 'name']),
         ]);
     }
@@ -76,54 +159,181 @@ class JobAssignmentController extends Controller
             'user_id' => 'required|exists:users,id',
             'service_status_id' => 'required|exists:service_statuses,id',
             'remarks' => 'nullable|string',
-            'stage' => 'nullable|in:New Case,Repeted,Free Service,From Out Service,Retaken,Swap Engineer',
         ]);
 
         $data['assigned_at'] = now();
+        $data['stage'] = 'assigned';
+        $data['position'] = JobAssignment::where('stage', 'assigned')->max('position') + 1;
+        $data['is_active'] = true;
 
         JobAssignment::create($data);
 
-        return redirect()->route('job_assignments.index')->with('success', 'Assignment created.');
+        return redirect()->route('job_assignments.kanban')->with('success', 'Engineer assigned successfully.');
     }
 
-    public function edit(JobAssignment $jobAssignment)
+    // Service: Engineer updates work (in_progress → completed)
+    public function service(JobAssignment $assignment)
     {
-        $this->authorize('update', $jobAssignment);
+        $this->authorize('complete', $assignment);
 
-        $jobAssignment->load(['jobCard.serviceInward.contact', 'user', 'status']);
+        $assignment->load(['jobCard.serviceInward.contact', 'user', 'spares', 'notes']);
 
-        return Inertia::render('JobAssignments/Edit', [
-            'assignment' => $jobAssignment,
-            'users' => User::orderBy('name')->get(['id', 'name']),
-            'statuses' => ServiceStatus::orderBy('name')->get(['id', 'name']),
+        return Inertia::render('JobAssignments/Service', [
+            'assignment' => $assignment,
+            'can' => [
+                'start' => Gate::allows('start', $assignment),
+                'complete' => Gate::allows('complete', $assignment),
+                'add_spare' => Gate::allows('manageSpares', $assignment),
+            ],
         ]);
     }
 
-    public function update(Request $request, JobAssignment $jobAssignment)
+    public function startService(Request $request, JobAssignment $assignment)
     {
-        $this->authorize('update', $jobAssignment);
+        $this->authorize('start', $assignment);
+
+        $assignment->update([
+            'stage' => 'in_progress',
+            'started_at' => now(),
+            'position' => JobAssignment::where('stage', 'in_progress')->max('position') + 1,
+        ]);
+
+        return back()->with('success', 'Service started.');
+    }
+
+    public function completeService(Request $request, JobAssignment $assignment)
+    {
+        $this->authorize('complete', $assignment);
 
         $data = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'service_status_id' => 'required|exists:service_statuses,id',
-            'started_at' => 'nullable|date',
-            'completed_at' => 'nullable|date|after_or_equal:started_at',
-            'time_spent_minutes' => 'nullable|integer|min:0',
-            'report' => 'nullable|string',
-            'remarks' => 'nullable|string',
-            'stage' => 'nullable|in:New Case,Repeted,Free Service,From Out Service,Retaken,Swap Engineer',
+            'report' => 'required|string',
+            'time_spent_minutes' => 'required|integer|min:1',
+            'engineer_note' => 'nullable|string',
         ]);
 
-        $jobAssignment->update($data);
+        $data['stage'] = 'completed';
+        $data['completed_at'] = now();
+        $data['position'] = JobAssignment::where('stage', 'completed')->max('position') + 1;
 
-        return redirect()->route('job_assignments.index')->with('success', 'Assignment updated.');
+        $assignment->update($data);
+
+        return redirect()->route('job_assignments.deliver', $assignment)->with('success', 'Service completed.');
     }
 
-    public function destroy(JobAssignment $jobAssignment)
+    // Deliver: Ready for delivery → delivery confirmed
+    public function deliver(JobAssignment $assignment)
     {
-        $this->authorize('delete', $jobAssignment);
-        $jobAssignment->delete();
-        return back()->with('success', 'Assignment moved to trash.');
+        $this->authorize('readyForDelivery', $assignment);
+
+        $assignment->load(['jobCard', 'user', 'spares']);
+
+        return Inertia::render('JobAssignments/Deliver', [
+            'assignment' => $assignment,
+            'can' => [
+                'ready' => Gate::allows('readyForDelivery', $assignment),
+                'confirm' => Gate::allows('verifyDelivery', $assignment),
+            ],
+        ]);
+    }
+
+    public function readyForDelivery(Request $request, JobAssignment $assignment)
+    {
+        $this->authorize('readyForDelivery', $assignment);
+
+        $data = $request->validate([
+            'future_note' => 'nullable|string',
+            'billing_details' => 'nullable|string',
+        ]);
+
+        $data['stage'] = 'ready_for_delivery';
+        $data['position'] = JobAssignment::where('stage', 'ready_for_delivery')->max('position') + 1;
+
+        $assignment->update($data);
+
+        return back()->with('success', 'Marked as ready for delivery.');
+    }
+
+    public function confirmDelivery(Request $request, JobAssignment $assignment)
+    {
+        $this->authorize('verifyDelivery', $assignment);
+
+        $data = $request->validate([
+            'delivered_otp' => 'required|string|size:6',
+            'billing_amount' => 'required|numeric|min:0',
+        ]);
+
+        $data['stage'] = 'delivered';
+        $data['delivered_confirmed_at'] = now();
+        $data['delivered_confirmed_by'] = auth()->user()->name;
+        $data['position'] = JobAssignment::where('stage', 'delivered')->max('position') + 1;
+
+        $assignment->update($data);
+
+        return redirect()->route('job_assignments.kanban')->with('success', 'Delivery confirmed.');
+    }
+
+    // Admin Close: Final verification and close
+    public function adminClose(JobAssignment $assignment)
+    {
+        $this->authorize('adminClose', $assignment);
+
+        $assignment->load(['jobCard', 'user', 'auditor']);
+
+        return Inertia::render('JobAssignments/AdminClose', [
+            'assignment' => $assignment,
+            'can' => [
+                'audit' => Gate::allows('audit', $assignment),
+                'close' => Gate::allows('adminClose', $assignment),
+            ],
+        ]);
+    }
+
+    public function audit(Request $request, JobAssignment $assignment)
+    {
+        $this->authorize('audit', $assignment);
+
+        $data = $request->validate([
+            'audit_note' => 'required|string',
+        ]);
+
+        $data['audited_at'] = now();
+        $data['auditor_id'] = auth()->id();
+
+        $assignment->update($data);
+
+        return back()->with('success', 'Audit note added.');
+    }
+
+    public function closeByAdmin(Request $request, JobAssignment $assignment)
+    {
+        $this->authorize('adminClose', $assignment);
+
+        $data = $request->validate([
+            'admin_verification_note' => 'required|string',
+            'customer_satisfaction_rating' => 'required|integer|between:1,5',
+        ]);
+
+        $data['stage'] = 'verified';
+        $data['admin_verified_at'] = now();
+        $data['admin_verifier_id'] = auth()->id();
+        $data['is_active'] = false; // Hide from all views
+        $data['position'] = 0;
+
+        $assignment->update($data);
+
+        // Trigger merit points calculation via observer
+        // (already handled in JobAssignmentObserver)
+
+        return redirect()->route('job_assignments.kanban')->with('success', 'Job closed successfully.');
+    }
+
+    // Trash & Restore
+    public function destroy(JobAssignment $assignment)
+    {
+        $this->authorize('delete', $assignment);
+        $assignment->update(['is_active' => false]);
+        $assignment->delete();
+        return back()->with('success', 'Assignment archived.');
     }
 
     public function restore($id)
@@ -131,25 +341,14 @@ class JobAssignmentController extends Controller
         $assignment = JobAssignment::withTrashed()->findOrFail($id);
         $this->authorize('restore', $assignment);
         $assignment->restore();
+        $assignment->update(['is_active' => true]);
         return back()->with('success', 'Assignment restored.');
-    }
-
-    public function forceDelete($id)
-    {
-        $assignment = JobAssignment::withTrashed()->findOrFail($id);
-        $this->authorize('delete', $assignment);
-        $assignment->forceDelete();
-        return back()->with('success', 'Assignment permanently deleted.');
     }
 
     public function trash()
     {
         $this->authorize('viewAny', JobAssignment::class);
-
-        $assignments = JobAssignment::onlyTrashed()
-            ->with(['jobCard.serviceInward.contact', 'user'])
-            ->paginate(50);
-
+        $assignments = JobAssignment::onlyTrashed()->with(['jobCard', 'user'])->paginate(50);
         return Inertia::render('JobAssignments/Trash', ['assignments' => $assignments]);
     }
 }
