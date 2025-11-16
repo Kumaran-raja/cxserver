@@ -83,7 +83,7 @@ export default function Assign() {
             {
                 onFinish: () => setIsSubmitting(false),
                 onSuccess: () => {
-                    router.visit(route('job_assignments.kanban'), { method: 'get' });
+                    router.visit(route('job_assignments.index'), { method: 'get' });
                 },
             }
         );

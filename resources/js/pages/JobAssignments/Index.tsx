@@ -452,17 +452,38 @@ export default function Index() {
                                 >
                                     <TableCell>
                                         <div>
-                                            <div className="font-medium">
+
+
+                                                {a.deleted_at ? (
+                                                    <span className="text-muted-foreground">
                                                 {a.job_card.job_no}
-                                            </div>
-                                            <div className="text-sm text-muted-foreground">
-                                                {a.job_card.service_inward.rma}{' '}
-                                                –{' '}
-                                                {
-                                                    a.job_card.service_inward
-                                                        .contact.name
-                                                }
-                                            </div>
+                                            </span>
+                                                ) : (
+                                                    <Link
+                                                        href={route(
+                                                            'job_assignments.show',
+                                                            a.id,
+                                                        )}
+                                                        className="hover:text-primary  hover:underline"
+                                                    >
+                                                        <div className="font-medium">
+                                                        {a.job_card.job_no}
+                                                        </div>
+
+                                                        <div className="text-sm text-muted-foreground">
+                                                            {a.job_card.service_inward.rma}{' '}
+                                                            –{' '}
+                                                            {
+                                                                a.job_card.service_inward
+                                                                    .contact.name
+                                                            }
+                                                        </div>
+                                                    </Link>
+                                                )}
+
+                                                {/*{a.job_card.job_no}*/}
+
+
                                         </div>
                                     </TableCell>
                                     <TableCell>{a.user.name}</TableCell>

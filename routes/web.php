@@ -178,14 +178,13 @@ Route::middleware(['auth', 'verified'])
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('job_assignments', JobAssignmentController::class)->except(['show']);
-    Route::get('job_assignments/{assignment}/show', [JobAssignmentController::class, 'show'])->name('job_assignments.show');
 
     Route::get('job_assignments/kanban', [JobAssignmentController::class, 'kanban'])->name('job_assignments.kanban');
     Route::patch('job_assignments/{assignment}/position', [JobAssignmentController::class, 'updatePosition'])->name('job_assignments.position');
 
     Route::get('job_assignments/{assignment}/service', [JobAssignmentController::class, 'service'])->name('job_assignments.service');
     Route::post('job_assignments/{assignment}/start_service', [JobAssignmentController::class, 'startService'])->name('job_assignments.start_service');
-    Route::post('job_assignments/{assignment}/complete', [JobAssignmentController::class, 'completeService'])->name('job_assignments.complete');
+    Route::post('job_assignments/{assignment}/complete_service', [JobAssignmentController::class, 'completeService'])->name('job_assignments.complete_service');
 
     Route::get('job_assignments/{assignment}/deliver', [JobAssignmentController::class, 'deliver'])->name('job_assignments.deliver');
     Route::post('job_assignments/{assignment}/ready', [JobAssignmentController::class, 'readyForDelivery'])->name('job_assignments.ready');
@@ -195,6 +194,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('job_assignments/{assignment}/audit', [JobAssignmentController::class, 'audit'])->name('job_assignments.audit');
     Route::post('job_assignments/{assignment}/close_admin', [JobAssignmentController::class, 'closeByAdmin'])->name('job_assignments.close_admin');
 
+    Route::get('job_assignments/{assignment}', [JobAssignmentController::class, 'show'])->name('job_assignments.show');
 });
 
 

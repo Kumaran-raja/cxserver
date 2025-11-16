@@ -59,6 +59,7 @@ class JobAssignmentController extends Controller
     // Show: Display single assignment details
     public function show(JobAssignment $assignment)
     {
+
         $this->authorize('view', $assignment);
 
         $assignment->load([
