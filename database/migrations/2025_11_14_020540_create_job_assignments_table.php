@@ -28,8 +28,10 @@ return new class extends Migration {
             $table->text('future_note')->nullable();
             $table->text('billing_details')->nullable();
             $table->decimal('billing_amount', 13, 2)->default('0.00'); // Total bill: service + spares sum
+            $table->foreignId('billing_confirmed_by')->nullable()->constrained('users');
             $table->dateTime('delivered_confirmed_at')->nullable();
             $table->string('delivered_confirmed_by')->nullable();
+            $table->foreignId('delivered_confirmed_by_id')->nullable()->constrained('users');
             $table->string('delivered_otp')->nullable();
             $table->foreignId('service_status_id')->constrained('service_statuses');
             $table->foreignId('admin_verifier_id')->nullable()->constrained('users');
