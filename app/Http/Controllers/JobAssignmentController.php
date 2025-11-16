@@ -267,8 +267,9 @@ class JobAssignmentController extends Controller
         $this->authorize('readyForDelivery', $assignment);
 
         $data = $request->validate([
-            'future_note' => 'nullable|string',
-            'billing_details' => 'nullable|string',
+            'billing_details' => 'required|string',
+            'billing_amount' => 'required|numeric|min:0',
+            'billing_confirmed_by' => 'required|exists:users,id',
         ]);
 
         $data['stage'] = 'ready_for_delivery';

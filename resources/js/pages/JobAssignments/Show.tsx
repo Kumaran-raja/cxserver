@@ -229,7 +229,7 @@ export default function Show({ assignment, can }: Props) {
                                 <Button asChild>
                                     <Link
                                         href={route(
-                                            'job_assignments.deliver',
+                                            'job_assignments.ready',
                                             assignment.id,
                                         )}
                                     >

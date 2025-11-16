@@ -185,9 +185,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('job_assignments/{assignment}/service', [JobAssignmentController::class, 'service'])->name('job_assignments.service');
     Route::post('job_assignments/{assignment}/start_service', [JobAssignmentController::class, 'startService'])->name('job_assignments.start_service');
     Route::post('job_assignments/{assignment}/complete_service', [JobAssignmentController::class, 'completeService'])->name('job_assignments.complete_service');
+    Route::post('job_assignments/{assignment}/ready', [JobAssignmentController::class, 'readyForDelivery'])->name('job_assignments.ready');
 
     Route::get('job_assignments/{assignment}/deliver', [JobAssignmentController::class, 'deliver'])->name('job_assignments.deliver');
-    Route::post('job_assignments/{assignment}/ready', [JobAssignmentController::class, 'readyForDelivery'])->name('job_assignments.ready');
     Route::post('job_assignments/{assignment}/confirm', [JobAssignmentController::class, 'confirmDelivery'])->name('job_assignments.confirm');
 
     Route::get('job_assignments/{assignment}/close', [JobAssignmentController::class, 'adminClose'])->name('job_assignments.close');
