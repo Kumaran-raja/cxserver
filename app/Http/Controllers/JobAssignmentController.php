@@ -6,6 +6,7 @@ use App\Models\JobAssignment;
 use App\Models\JobCard;
 use App\Models\ServiceStatus;
 use App\Models\User;
+use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Gate;
@@ -318,9 +319,13 @@ class JobAssignmentController extends Controller
         $phone = $assignment->jobCard->serviceInward->contact->mobile;
 
         // TODO: Send WhatsApp
-        // WhatsAppService::send($phone, "Your delivery OTP: {$otp}");
+        $opened = WhatsAppService::open($phone, "Your delivery OTP: {$otp}");
 
         \Log::info("OTP {$otp} sent to {$phone} for Job Assignment #{$assignment->id}");
+
+        if (!$opened) {
+            return back()->withErrors(['otp' => 'Could not open WhatsApp.']);
+        }
 
         return back()->with('success', 'OTP sent via WhatsApp.');
     }
