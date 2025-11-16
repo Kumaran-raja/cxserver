@@ -4,7 +4,6 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useRoute } from 'ziggy-js';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -16,7 +15,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, User, ClipboardList, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
 import type { BreadcrumbItem } from '@/types';
 import { dashboard } from '@/routes';
 import { index as job_assignments } from '@/routes/job_assignments';
@@ -32,7 +30,7 @@ interface JobCard {
     };
 }
 
-interface Technician {
+interface Engineer {
     id: number;
     name: string;
 }
@@ -44,7 +42,7 @@ interface ServiceStatus {
 
 interface Props {
     jobCards: JobCard[];
-    technicians?: Technician[];
+    engineers: Engineer[];  // Changed to required, remove ?
     statuses: ServiceStatus[];
 }
 
@@ -56,10 +54,10 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function Assign() {
     const route = useRoute();
-    const { jobCards, technicians, statuses } = usePage().props as unknown as Props;
+    const { jobCards, engineers, statuses } = usePage().props as unknown as Props;
 
     const [selectedJobCard, setSelectedJobCard] = useState<string>('');
-    const [selectedTechnician, setSelectedTechnician] = useState<string>('');
+    const [selectedEngineer, setSelectedEngineer] = useState<string>('');
     const [selectedStatus, setSelectedStatus] = useState<string>('');
     const [remarks, setRemarks] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,7 +74,7 @@ export default function Assign() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!selectedJobCard || !selectedTechnician || !selectedStatus) {
+        if (!selectedJobCard || !selectedEngineer || !selectedStatus) {
             return;
         }
 
@@ -86,7 +84,7 @@ export default function Assign() {
             route('job_assignments.store'),
             {
                 job_card_id: selectedJobCard,
-                user_id: selectedTechnician,
+                user_id: selectedEngineer,
                 service_status_id: selectedStatus,
                 remarks,
             },
@@ -101,7 +99,7 @@ export default function Assign() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Assign Job to Technician" />
+            <Head title="Assign Job to Engineer" />
 
             <div className="py-6">
                 <div className="mx-auto max-w-4xl space-y-6">
@@ -110,7 +108,7 @@ export default function Assign() {
                         <div>
                             <h1 className="text-2xl font-bold tracking-tight">Assign Job</h1>
                             <p className="mt-1 text-sm text-muted-foreground">
-                                Select a job card and assign it to a technician
+                                Select a job card and assign it to an engineer
                             </p>
                         </div>
                         <Button variant="outline" asChild>
@@ -196,30 +194,30 @@ export default function Assign() {
                             </div>
                         )}
 
-                        {/* Technician Selection */}
+                        {/* Engineer Selection */}
                         <div className="space-y-3">
-                            <Label htmlFor="technician" className="text-base font-medium">
-                                Assign to Technician <span className="text-red-500">*</span>
+                            <Label htmlFor="engineer" className="text-base font-medium">
+                                Assign to Engineer <span className="text-red-500">*</span>
                             </Label>
                             <Select
-                                value={selectedTechnician}
-                                onValueChange={setSelectedTechnician}
-                                disabled={isSubmitting || !selectedJobCard || !technicians || technicians.length === 0}
+                                value={selectedEngineer}
+                                onValueChange={setSelectedEngineer}
+                                disabled={isSubmitting || engineers.length === 0}
                             >
-                                <SelectTrigger id="technician" className="w-full">
-                                    <SelectValue placeholder="Choose a technician..." />
+                                <SelectTrigger id="engineer" className="w-full">
+                                    <SelectValue placeholder="Choose an engineer..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {(!technicians || technicians.length === 0) ? (
+                                    {engineers.length === 0 ? (
                                         <SelectItem value="none" disabled>
-                                            No technicians available
+                                            No engineers available
                                         </SelectItem>
                                     ) : (
-                                        technicians.map((tech) => (
-                                            <SelectItem key={tech.id} value={String(tech.id)}>
+                                        engineers.map((eng) => (
+                                            <SelectItem key={eng.id} value={String(eng.id)}>
                                                 <div className="flex items-center gap-2">
                                                     <User className="h-4 w-4" />
-                                                    {tech.name}
+                                                    {eng.name}
                                                 </div>
                                             </SelectItem>
                                         ))
@@ -236,7 +234,7 @@ export default function Assign() {
                             <Select
                                 value={selectedStatus}
                                 onValueChange={setSelectedStatus}
-                                disabled={isSubmitting || !selectedJobCard}
+                                disabled={isSubmitting}
                             >
                                 <SelectTrigger id="status" className="w-full">
                                     <SelectValue placeholder="Select status..." />
@@ -260,7 +258,7 @@ export default function Assign() {
                                 id="remarks"
                                 rows={3}
                                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                placeholder="Any special instructions for the technician..."
+                                placeholder="Any special instructions for the engineer..."
                                 value={remarks}
                                 onChange={(e) => setRemarks(e.target.value)}
                                 disabled={isSubmitting}
@@ -280,7 +278,7 @@ export default function Assign() {
                                 disabled={
                                     isSubmitting ||
                                     !selectedJobCard ||
-                                    !selectedTechnician ||
+                                    !selectedEngineer ||
                                     !selectedStatus
                                 }
                                 className="min-w-32"

@@ -30,6 +30,11 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+//    public static function technicians($query)
+//    {
+//        return $query->whereHas('roles', fn ($q) => $q->where('name', 'engineer'));
+//    }
+
 
     protected function casts(): array
     {
@@ -136,9 +141,8 @@ class User extends Authenticatable
         }
     }
 
-    public function scopeTechnicians($query)
+    public function scopeEngineer($query)
     {
-        // Users that have the role named "technician"
         return $query->whereHas('roles', fn ($q) => $q->where('name', 'engineer'));
     }
 

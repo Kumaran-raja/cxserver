@@ -138,14 +138,13 @@ class JobAssignmentController extends Controller
     {
         $this->authorize('create', JobAssignment::class);
 
-
         $jobCards = JobCard::with('serviceInward.contact')
             ->whereDoesntHave('assignments', fn($q) => $q->whereNull('completed_at')->where('is_active', true))
             ->get(['id', 'job_no', 'service_inward_id']);
 
         return Inertia::render('JobAssignments/Assign', [
             'jobCards' => $jobCards,
-            'users' => User::technicians()->orderBy('name')->get(['id', 'name']),
+            'engineers' => User::engineer()->orderBy('name')->get(['id', 'name']), // Changed to 'engineers' and scopeEngineer()
             'statuses' => ServiceStatus::orderBy('name')->get(['id', 'name']),
         ]);
     }
