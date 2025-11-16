@@ -1,11 +1,8 @@
 // resources/js/Pages/JobAssignments/Index.tsx
-import AppLayout from '@/layouts/app-layout';
-import { Head, Link, usePage, router } from '@inertiajs/react';
-import { useRoute } from 'ziggy-js';
-import { useState, useEffect, useCallback, useMemo, JSX } from 'react';
-import { Button } from '@/components/ui/button';
+import DataTable from '@/components/table/DataTable';
+import TableActions from '@/components/table/TableActions';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -14,20 +11,30 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, Search, RotateCcw, X, ClipboardCheck } from 'lucide-react';
-import DataTable from '@/components/table/DataTable';
-import TableActions from '@/components/table/TableActions';
+import { Separator } from '@/components/ui/separator';
 import {
-    TableHeader,
-    TableRow,
-    TableHead,
     TableBody,
     TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/ui/table';
-import { format } from 'date-fns';
-import { index as job_assignments } from '@/routes/job_assignments/index';
-import type { BreadcrumbItem } from '@/types';
+import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
+import { index as job_assignments, kanban, service, show } from '@/routes/job_assignments/index';
+import type { BreadcrumbItem } from '@/types';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { format } from 'date-fns';
+import {
+    ClipboardCheck,
+    Plus,
+    RotateCcw,
+    Search,
+    Trash2,
+    X,
+} from 'lucide-react';
+import { JSX, useCallback, useEffect, useMemo, useState } from 'react';
+import { useRoute } from 'ziggy-js';
 
 interface Assignment {
     id: number;
@@ -115,7 +122,7 @@ export default function Index() {
                     : localFilters.technician_filter,
             per_page: localFilters.per_page,
         }),
-        [localFilters]
+        [localFilters],
     );
 
     // Navigate with filters
@@ -129,30 +136,35 @@ export default function Index() {
                     preserveState: true,
                     replace: true,
                     onFinish: () => setIsNavigating(false),
-                }
+                },
             );
         },
-        [route, buildPayload]
+        [route, buildPayload],
     );
 
     // Reset all filters
     const handleReset = () => {
-        router.get(route('job_assignments.index'), {}, { preserveState: true, replace: true });
+        router.get(
+            route('job_assignments.index'),
+            {},
+            { preserveState: true, replace: true },
+        );
     };
 
     // Clear single filter
-    const clearFilter = useCallback((
-        key: 'search' | 'stage' | 'technician_filter' | 'per_page'
-    ) => {
-        const updates: Partial<typeof localFilters> = {};
-        if (key === 'search') updates.search = '';
-        if (key === 'stage') updates.stage = 'all';
-        if (key === 'technician_filter') updates.technician_filter = 'all';
-        if (key === 'per_page') updates.per_page = '50';
+    const clearFilter = useCallback(
+        (key: 'search' | 'stage' | 'technician_filter' | 'per_page') => {
+            const updates: Partial<typeof localFilters> = {};
+            if (key === 'search') updates.search = '';
+            if (key === 'stage') updates.stage = 'all';
+            if (key === 'technician_filter') updates.technician_filter = 'all';
+            if (key === 'per_page') updates.per_page = '50';
 
-        setLocalFilters(prev => ({ ...prev, ...updates }));
-        navigate(updates);
-    }, [navigate]);
+            setLocalFilters((prev) => ({ ...prev, ...updates }));
+            navigate(updates);
+        },
+        [navigate],
+    );
 
     // Active filter badges
     const activeFilterBadges = useMemo(() => {
@@ -160,55 +172,88 @@ export default function Index() {
 
         if (localFilters.search) {
             badges.push(
-                <Badge key="search" variant="secondary" className="text-xs flex items-center gap-1">
+                <Badge
+                    key="search"
+                    variant="secondary"
+                    className="flex items-center gap-1 text-xs"
+                >
                     Search: "{localFilters.search}"
-                    <button onClick={() => clearFilter('search')} className="ml-1 hover:bg-muted rounded-sm p-0.5">
+                    <button
+                        onClick={() => clearFilter('search')}
+                        className="ml-1 rounded-sm p-0.5 hover:bg-muted"
+                    >
                         <X className="h-3 w-3" />
                     </button>
-                </Badge>
+                </Badge>,
             );
         }
 
         if (localFilters.stage !== 'all') {
             badges.push(
-                <Badge key="stage" variant="secondary" className="text-xs flex items-center gap-1">
+                <Badge
+                    key="stage"
+                    variant="secondary"
+                    className="flex items-center gap-1 text-xs"
+                >
                     Stage: {localFilters.stage}
-                    <button onClick={() => clearFilter('stage')} className="ml-1 hover:bg-muted rounded-sm p-0.5">
+                    <button
+                        onClick={() => clearFilter('stage')}
+                        className="ml-1 rounded-sm p-0.5 hover:bg-muted"
+                    >
                         <X className="h-3 w-3" />
                     </button>
-                </Badge>
+                </Badge>,
             );
         }
 
         if (localFilters.technician_filter !== 'all') {
-            const tech = technicians.find(t => t.id === parseInt(localFilters.technician_filter));
+            const tech = technicians.find(
+                (t) => t.id === parseInt(localFilters.technician_filter),
+            );
             badges.push(
-                <Badge key="tech" variant="secondary" className="text-xs flex items-center gap-1">
+                <Badge
+                    key="tech"
+                    variant="secondary"
+                    className="flex items-center gap-1 text-xs"
+                >
                     Technician: {tech?.name || 'Unknown'}
-                    <button onClick={() => clearFilter('technician_filter')} className="ml-1 hover:bg-muted rounded-sm p-0.5">
+                    <button
+                        onClick={() => clearFilter('technician_filter')}
+                        className="ml-1 rounded-sm p-0.5 hover:bg-muted"
+                    >
                         <X className="h-3 w-3" />
                     </button>
-                </Badge>
+                </Badge>,
             );
         }
 
         // Per Page Badge (only if not default)
         if (localFilters.per_page !== '50') {
             badges.push(
-                <Badge key="per_page" variant="secondary" className="text-xs flex items-center gap-1">
+                <Badge
+                    key="per_page"
+                    variant="secondary"
+                    className="flex items-center gap-1 text-xs"
+                >
                     Per Page: {localFilters.per_page}
-                    <button onClick={() => clearFilter('per_page')} className="ml-1 hover:bg-muted rounded-sm p-0.5">
+                    <button
+                        onClick={() => clearFilter('per_page')}
+                        className="ml-1 rounded-sm p-0.5 hover:bg-muted"
+                    >
                         <X className="h-3 w-3" />
                     </button>
-                </Badge>
+                </Badge>,
             );
         }
 
         if (badges.length === 0) {
             badges.push(
-                <span key="none" className="text-xs text-muted-foreground inline-flex items-center italic">
+                <span
+                    key="none"
+                    className="inline-flex items-center text-xs text-muted-foreground italic"
+                >
                     No active filters
-                </span>
+                </span>,
             );
         }
 
@@ -217,7 +262,7 @@ export default function Index() {
 
     // Handle per-page change from DataTable
     const handlePerPageChange = (perPage: number) => {
-        setLocalFilters(prev => ({ ...prev, per_page: String(perPage) }));
+        setLocalFilters((prev) => ({ ...prev, per_page: String(perPage) }));
         navigate({ per_page: perPage, page: 1 });
     };
 
@@ -226,9 +271,9 @@ export default function Index() {
             <Head title="Job Assignments" />
 
             <div className="py-6">
-                <div className="mx-auto sm:px-6 lg:px-8 space-y-6">
+                <div className="mx-auto space-y-6 sm:px-6 lg:px-8">
                     {/* Header */}
-                    <div className="flex justify-between items-center">
+                    <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl font-bold tracking-tight text-black/50">
                                 Job Assignments
@@ -240,22 +285,24 @@ export default function Index() {
                         <div className="flex gap-3">
                             {can.create && (
                                 <Button asChild>
-                                    <Link href={route('job_assignments.create')}>
-                                        <Plus className="h-4 w-4 mr-2" />
+                                    <Link
+                                        href={route('job_assignments.create')}
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" />
                                         Assign Job
                                     </Link>
                                 </Button>
                             )}
                             <Button asChild variant="outline">
                                 <Link href={route('job_assignments.kanban')}>
-                                    <ClipboardCheck className="h-4 w-4 mr-2" />
+                                    <ClipboardCheck className="mr-2 h-4 w-4" />
                                     Kanban View
                                 </Link>
                             </Button>
                             {trashedCount > 0 && (
                                 <Button asChild variant="secondary">
                                     <Link href={route('job_assignments.trash')}>
-                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        <Trash2 className="mr-2 h-4 w-4" />
                                         Trash ({trashedCount})
                                     </Link>
                                 </Button>
@@ -266,15 +313,18 @@ export default function Index() {
                     <Separator />
 
                     {/* Filters */}
-                    <div className="flex flex-wrap gap-3 items-center">
+                    <div className="flex flex-wrap items-center gap-3">
                         {/* Search */}
-                        <div className="flex items-center gap-2 flex-1 max-w-md">
+                        <div className="flex max-w-md flex-1 items-center gap-2">
                             <Input
                                 type="text"
                                 placeholder="Search by Job No, RMA, Technician..."
                                 value={localFilters.search}
                                 onChange={(e) =>
-                                    setLocalFilters((prev) => ({ ...prev, search: e.target.value }))
+                                    setLocalFilters((prev) => ({
+                                        ...prev,
+                                        search: e.target.value,
+                                    }))
                                 }
                                 onKeyUp={(e) => e.key === 'Enter' && navigate()}
                                 disabled={isNavigating}
@@ -285,12 +335,15 @@ export default function Index() {
                         <Select
                             value={localFilters.stage}
                             onValueChange={(v) => {
-                                setLocalFilters((prev) => ({ ...prev, stage: v }));
+                                setLocalFilters((prev) => ({
+                                    ...prev,
+                                    stage: v,
+                                }));
                                 navigate({ stage: v });
                             }}
                             disabled={isNavigating}
                         >
-                            <SelectTrigger className="w-48 h-9">
+                            <SelectTrigger className="h-9 w-48">
                                 <SelectValue placeholder="All Stages" />
                             </SelectTrigger>
                             <SelectContent>
@@ -307,16 +360,21 @@ export default function Index() {
                         <Select
                             value={localFilters.technician_filter}
                             onValueChange={(v) => {
-                                setLocalFilters((prev) => ({ ...prev, technician_filter: v }));
+                                setLocalFilters((prev) => ({
+                                    ...prev,
+                                    technician_filter: v,
+                                }));
                                 navigate({ technician_filter: v });
                             }}
                             disabled={isNavigating}
                         >
-                            <SelectTrigger className="w-48 h-9">
+                            <SelectTrigger className="h-9 w-48">
                                 <SelectValue placeholder="All Technicians" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Technicians</SelectItem>
+                                <SelectItem value="all">
+                                    All Technicians
+                                </SelectItem>
                                 {technicians.map((t) => (
                                     <SelectItem key={t.id} value={String(t.id)}>
                                         {t.name}
@@ -348,9 +406,13 @@ export default function Index() {
                     </div>
 
                     {/* ACTIVE FILTERS */}
-                    <div className="flex flex-wrap gap-2 p-3 bg-muted/30 rounded-md border">
-                        <span className="font-medium text-foreground">Active Filters:</span>
-                        <div className="flex flex-wrap gap-2">{activeFilterBadges}</div>
+                    <div className="flex flex-wrap gap-2 rounded-md border bg-muted/30 p-3">
+                        <span className="font-medium text-foreground">
+                            Active Filters:
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                            {activeFilterBadges}
+                        </div>
                     </div>
 
                     {/* DATA TABLE */}
@@ -377,7 +439,9 @@ export default function Index() {
                                 <TableHead>Merit Points</TableHead>
                                 <TableHead>Rating</TableHead>
                                 <TableHead>Admin Verifier</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead className="text-right">
+                                    Actions
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -388,33 +452,59 @@ export default function Index() {
                                 >
                                     <TableCell>
                                         <div>
-                                            <div className="font-medium">{a.job_card.job_no}</div>
+                                            <div className="font-medium">
+                                                {a.job_card.job_no}
+                                            </div>
                                             <div className="text-sm text-muted-foreground">
-                                                {a.job_card.service_inward.rma} –{' '}
-                                                {a.job_card.service_inward.contact.name}
+                                                {a.job_card.service_inward.rma}{' '}
+                                                –{' '}
+                                                {
+                                                    a.job_card.service_inward
+                                                        .contact.name
+                                                }
                                             </div>
                                         </div>
                                     </TableCell>
                                     <TableCell>{a.user.name}</TableCell>
                                     <TableCell>
-                                        <Badge variant="outline">{a.status.name}</Badge>
+                                        <Badge variant="outline">
+                                            {a.status.name}
+                                        </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        {format(new Date(a.assigned_at), 'dd MMM yyyy HH:mm')}
+                                        {format(
+                                            new Date(a.assigned_at),
+                                            'dd MMM yyyy HH:mm',
+                                        )}
                                     </TableCell>
                                     <TableCell>
-                                        {a.started_at ? format(new Date(a.started_at), 'dd MMM yyyy HH:mm') : '—'}
+                                        {a.started_at
+                                            ? format(
+                                                  new Date(a.started_at),
+                                                  'dd MMM yyyy HH:mm',
+                                              )
+                                            : '—'}
                                     </TableCell>
                                     <TableCell>
-                                        {a.completed_at ? format(new Date(a.completed_at), 'dd MMM yyyy HH:mm') : '—'}
+                                        {a.completed_at
+                                            ? format(
+                                                  new Date(a.completed_at),
+                                                  'dd MMM yyyy HH:mm',
+                                              )
+                                            : '—'}
                                     </TableCell>
                                     <TableCell>
                                         {a.stage ? (
-                                            <Badge variant="outline" className="capitalize">
+                                            <Badge
+                                                variant="outline"
+                                                className="capitalize"
+                                            >
                                                 {a.stage.replace('_', ' ')}
                                             </Badge>
                                         ) : (
-                                            <span className="text-muted-foreground">—</span>
+                                            <span className="text-muted-foreground">
+                                                —
+                                            </span>
                                         )}
                                     </TableCell>
                                     <TableCell>
@@ -428,7 +518,9 @@ export default function Index() {
                                             : '—'}
                                     </TableCell>
                                     <TableCell>
-                                        {a.merit_points > 0 ? a.merit_points : '—'}
+                                        {a.merit_points > 0
+                                            ? a.merit_points
+                                            : '—'}
                                     </TableCell>
                                     <TableCell>
                                         {a.customer_satisfaction_rating
@@ -436,34 +528,54 @@ export default function Index() {
                                             : '—'}
                                     </TableCell>
                                     <TableCell>
-                                        {a.admin_verifier ? a.admin_verifier.name : '—'}
+                                        {a.admin_verifier
+                                            ? a.admin_verifier.name
+                                            : '—'}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <TableActions
                                             id={a.id}
-                                            editRoute={route('job_assignments.edit', a.id)}
-                                            deleteRoute={route('job_assignments.destroy', a.id)}
+                                            editRoute={route(
+                                                'job_assignments.edit',
+                                                a.id,
+                                            )}
+                                            deleteRoute={route(
+                                                'job_assignments.destroy',
+                                                a.id,
+                                            )}
                                             restoreRoute={
                                                 a.deleted_at
-                                                    ? route('job_assignments.restore', a.id)
+                                                    ? route(
+                                                          'job_assignments.restore',
+                                                          a.id,
+                                                      )
                                                     : undefined
                                             }
                                             forceDeleteRoute={
                                                 a.deleted_at
-                                                    ? route('job_assignments.forceDelete', a.id)
+                                                    ? route(
+                                                          'job_assignments.forceDelete',
+                                                          a.id,
+                                                      )
                                                     : undefined
                                             }
                                             isDeleted={!!a.deleted_at}
                                             customActions={
-                                                can.admin_close && a.stage === 'delivered' && !a.deleted_at
+                                                can.admin_close &&
+                                                a.stage === 'delivered' &&
+                                                !a.deleted_at
                                                     ? [
-                                                        {
-                                                            label: 'Admin Close',
-                                                            icon: ClipboardCheck,
-                                                            href: route('job_assignments.close', a.id),
-                                                            className: 'text-green-600 hover:text-green-900',
-                                                        },
-                                                    ]
+                                                          {
+                                                              label: 'Admin Close',
+                                                              icon: ClipboardCheck,
+                                                              href: route(
+                                                                  'job_assignments.close',
+                                                                  a.id,
+                                                              ),
+                                                              className:
+                                                                  'text-green-600 hover:text-green-900',
+                                                          },
+                                                      ]
                                                     : []
                                             }
                                         />

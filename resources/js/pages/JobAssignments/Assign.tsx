@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, User, ClipboardList, AlertCircle } from 'lucide-react';
 import type { BreadcrumbItem } from '@/types';
 import { dashboard } from '@/routes';
-import { index as job_assignments } from '@/routes/job_assignments';
+import { index as job_assignments } from '@/routes/job_assignments/index';
 
 interface JobCard {
     id: number;
@@ -35,15 +35,9 @@ interface Engineer {
     name: string;
 }
 
-interface ServiceStatus {
-    id: number;
-    name: string;
-}
-
 interface Props {
     jobCards: JobCard[];
-    engineers: Engineer[];  // Changed to required, remove ?
-    statuses: ServiceStatus[];
+    engineers: Engineer[];
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -54,11 +48,10 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function Assign() {
     const route = useRoute();
-    const { jobCards, engineers, statuses } = usePage().props as unknown as Props;
+    const { jobCards, engineers } = usePage().props as unknown as Props;
 
     const [selectedJobCard, setSelectedJobCard] = useState<string>('');
     const [selectedEngineer, setSelectedEngineer] = useState<string>('');
-    const [selectedStatus, setSelectedStatus] = useState<string>('');
     const [remarks, setRemarks] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -74,7 +67,7 @@ export default function Assign() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!selectedJobCard || !selectedEngineer || !selectedStatus) {
+        if (!selectedJobCard || !selectedEngineer) {
             return;
         }
 
@@ -85,7 +78,6 @@ export default function Assign() {
             {
                 job_card_id: selectedJobCard,
                 user_id: selectedEngineer,
-                service_status_id: selectedStatus,
                 remarks,
             },
             {
@@ -226,29 +218,6 @@ export default function Assign() {
                             </Select>
                         </div>
 
-                        {/* Service Status */}
-                        <div className="space-y-3">
-                            <Label htmlFor="status" className="text-base font-medium">
-                                Initial Service Status <span className="text-red-500">*</span>
-                            </Label>
-                            <Select
-                                value={selectedStatus}
-                                onValueChange={setSelectedStatus}
-                                disabled={isSubmitting}
-                            >
-                                <SelectTrigger id="status" className="w-full">
-                                    <SelectValue placeholder="Select status..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {statuses.map((status) => (
-                                        <SelectItem key={status.id} value={String(status.id)}>
-                                            {status.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
                         {/* Remarks */}
                         <div className="space-y-3">
                             <Label htmlFor="remarks" className="text-base font-medium">
@@ -278,8 +247,7 @@ export default function Assign() {
                                 disabled={
                                     isSubmitting ||
                                     !selectedJobCard ||
-                                    !selectedEngineer ||
-                                    !selectedStatus
+                                    !selectedEngineer
                                 }
                                 className="min-w-32"
                             >

@@ -56,6 +56,29 @@ class JobAssignmentController extends Controller
         ]);
     }
 
+    // Show: Display single assignment details
+    public function show(JobAssignment $assignment)
+    {
+        $this->authorize('view', $assignment);
+
+        $assignment->load([
+            'jobCard.serviceInward.contact',
+            'user',
+            'status',
+            'adminVerifier',
+            'auditor'
+        ]);
+
+        return Inertia::render('JobAssignments/Show', [
+            'assignment' => $assignment,
+            'can' => [
+                'update' => Gate::allows('update', $assignment),
+                'delete' => Gate::allows('delete', $assignment),
+                'adminClose' => Gate::allows('adminClose', $assignment),
+            ],
+        ]);
+    }
+
     // Update position on drag (Kanban)
     public function updatePosition(Request $request)
     {
@@ -93,6 +116,9 @@ class JobAssignmentController extends Controller
                 'stage' => $request->stage,
                 'position' => $request->position,
             ]);
+
+            // Broadcast the update
+            event(new \App\Events\AssignmentUpdated($assignment, $request->stage, $request->position));
         });
 
         return response()->json(['success' => true]);
@@ -144,8 +170,7 @@ class JobAssignmentController extends Controller
 
         return Inertia::render('JobAssignments/Assign', [
             'jobCards' => $jobCards,
-            'engineers' => User::engineer()->orderBy('name')->get(['id', 'name']), // Changed to 'engineers' and scopeEngineer()
-            'statuses' => ServiceStatus::orderBy('name')->get(['id', 'name']),
+            'engineers' => User::engineer()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -156,7 +181,7 @@ class JobAssignmentController extends Controller
         $data = $request->validate([
             'job_card_id' => 'required|exists:job_cards,id',
             'user_id' => 'required|exists:users,id',
-            'service_status_id' => 'required|exists:service_statuses,id',
+            'service_status_id' => 'nullable|exists:service_statuses,id',
             'remarks' => 'nullable|string',
         ]);
 
@@ -164,10 +189,11 @@ class JobAssignmentController extends Controller
         $data['stage'] = 'assigned';
         $data['position'] = JobAssignment::where('stage', 'assigned')->max('position') + 1;
         $data['is_active'] = true;
+        $data['service_status_id'] = 1;
 
         JobAssignment::create($data);
 
-        return redirect()->route('job_assignments.kanban')->with('success', 'Engineer assigned successfully.');
+        return redirect()->route('job_assignments.index')->with('success', 'Engineer assigned successfully.');
     }
 
     // Service: Engineer updates work (in_progress → completed)
