@@ -290,45 +290,57 @@ class JobAssignmentController extends Controller
     }
 
 
-    // Generate OTP & Send WhatsApp
-// Generate OTP & Send WhatsApp
+    // Generate OTP & Return to Frontend (no server-side WhatsApp opening)
     public function generateOtp(Request $request, JobAssignment $assignment)
     {
         $this->authorize('verifyDelivery', $assignment);
 
         $request->validate(['deliver_by' => 'required|exists:users,id']);
 
-        // EAGER LOAD NEEDED RELATIONSHIPS
+        // Load required relationships
         $assignment->loadMissing([
             'jobCard.serviceInward.contact',
         ]);
 
-        // SAFETY CHECK
-        if (!$assignment->jobCard?->serviceInward?->contact?->mobile) {
+        // Safety check - customer must have mobile
+        $contact = $assignment->jobCard?->serviceInward?->contact;
+        if (!$contact || !$mobile = $contact->mobile) {
             return back()->withErrors(['otp' => 'Customer mobile number is missing.']);
         }
 
+        // Generate 6-digit OTP
         $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Get delivery person name
         $deliverBy = User::findOrFail($request->deliver_by);
 
+        // Save OTP & delivery person
         $assignment->update([
-            'delivered_otp' => $otp,
-            'delivered_confirmed_by' => $deliverBy->name,
+            'delivered_otp'           => $otp,
+            'delivered_confirmed_by'  => $deliverBy->name,
         ]);
 
-        $phone = $assignment->jobCard->serviceInward->contact->mobile;
-
-        // TODO: Send WhatsApp
-        $opened = WhatsAppService::open($phone, "Your delivery OTP: {$otp}");
-
-        \Log::info("OTP {$otp} sent to {$phone} for Job Assignment #{$assignment->id}");
-
-        if (!$opened) {
-            return back()->withErrors(['otp' => 'Could not open WhatsApp.']);
+        // Clean & normalize mobile for frontend (return Indian format with +91 or 91)
+        $clean = preg_replace('/\D/', '', $mobile);
+        if (strlen($clean) === 10) {
+            $clean = '91' . $clean;
         }
+        $formattedMobile = '+91 ' . substr($clean, 2, 5) . ' ' . substr($clean, 7); // Optional pretty format
+        $whatsappNumber = $clean; // Raw for wa.me link
 
-        return back()->with('success', 'OTP sent via WhatsApp.');
+        \Log::info("OTP {$otp} generated for Job Assignment #{$assignment->id} | Mobile: {$whatsappNumber}");
+
+        // Return only OTP + mobile info to frontend
+        return back()->with([
+            'otpGenerated'    => true,
+            'otp'             => $otp,
+            'customerMobile'  => $mobile,              // Original as stored
+            'whatsappNumber'  => $whatsappNumber,      // Clean 91xxxxxxxxxx for wa.me
+            'formattedMobile' => $formattedMobile,     // Pretty: +91 XXXXX XXXXX
+            'message'         => "Your delivery OTP: {$otp}",
+        ]);
     }
+
 // Update confirmDelivery to check OTP
     public function confirmDelivery(Request $request, JobAssignment $assignment)
     {
