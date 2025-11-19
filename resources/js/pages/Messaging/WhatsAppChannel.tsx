@@ -146,7 +146,7 @@ const WhatsAppChannel: React.FC = () => {
                         <button
                             onClick={handleSend}
                             disabled={!message.trim()}
-                            className={`ml-2 p-3 rounded-full rounded-full transition-all ${
+                            className={`ml-2 p-3 rounded-full transition-all ${
                                 message.trim()
                                     ? 'bg-[#00a884] hover:bg-[#008f6f] text-white shadow-md'
                                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'

@@ -345,6 +345,9 @@ class JobAssignmentController extends Controller
     public function confirmDelivery(Request $request, JobAssignment $assignment)
     {
         $this->authorize('verifyDelivery', $assignment);
+
+        dd($request);
+
         $request->validate(['delivered_otp' => 'required|digits:6']);
 
         if ($request->delivered_otp !== $assignment->delivered_otp) {
@@ -354,11 +357,15 @@ class JobAssignmentController extends Controller
         $assignment->update([
             'stage' => 'delivered',
             'delivered_confirmed_at' => now(),
+            'delivered_confirmed_by' => auth()->user()->name,
             'position' => JobAssignment::where('stage', 'delivered')->max('position') + 1,
         ]);
 
-        return redirect()->route('job_assignments.show', $assignment)->with('success', 'Delivery confirmed.');
+        return redirect()
+            ->route('job_assignments.show', $assignment)
+            ->with('success', 'Delivery confirmed successfully! Job is now in Delivered stage.');
     }
+
 
     // Admin Close: Final verification and close
     public function adminClose(JobAssignment $assignment)
