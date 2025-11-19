@@ -432,3 +432,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::resource('enquiries', EnquiryController::class);
+
+use App\Http\Controllers\MessagingController;
+
+Route::get('/messaging/channel', [MessagingController::class, 'channel'])
+    ->name('messaging.channel');
