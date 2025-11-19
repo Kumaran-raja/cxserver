@@ -438,5 +438,15 @@ use App\Http\Controllers\MessagingController;
 Route::get('/messaging/channel', [MessagingController::class, 'channel'])
     ->name('messaging.channel');
 
-Route::get('/messaging/whatsapp', [MessagingController::class, 'whatsappChannel'])
+//Route::get('/messaging/whatsapp', [MessagingController::class, 'whatsappChannel'])
+//    ->name('messaging.whatsapp');
+
+Route::get('/messaging/whatsapp', [MessagingController::class, 'whatsappContacts'])
     ->name('messaging.whatsapp');
+
+Route::post('/messaging/whatsapp/send', [MessagingController::class, 'sendWhatsAppMessage'])
+    ->name('messaging.whatsapp.send');
+
+Route::get('/messaging/chat-history/{contact}', [MessagingController::class, 'getChatHistory'])
+    ->name('messaging.chat-history');
+

@@ -1,18 +1,38 @@
-// resources/js/Pages/Messaging/WhatsAppChannel.tsx
 import React, { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { Head, usePage } from '@inertiajs/react';
+import { format } from 'date-fns';
 
 interface PageProps {
     mobile: string;
-    defaultText: string;
+    defaultText?: string;
 }
 
 const WhatsAppChannel: React.FC = () => {
-    const { mobile, defaultText } = usePage<PageProps>().props;
+    const { mobile, defaultText = '' } = usePage<PageProps>().props;
 
-    const [message, setMessage] = useState<string>(defaultText || '');
+    const [message, setMessage] = useState<string>('');
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
+    // Dummy static conversation (real WhatsApp feel)
+    const dummyMessages = [
+        { id: 1, text: "Hello, I'm having issue with invoice generation in CODEXSUN ERP", sender: 'customer', time: new Date(Date.now() - 60*60*1000) },
+        { id: 2, text: "Hi! Welcome to CODEXSUN Support 👋\nThanks for reaching out.", sender: 'support', time: new Date(Date.now() - 55*60*1000) },
+        { id: 3, text: "Can you please share your company ID or the invoice number?", sender: 'support', time: new Date(Date.now() - 54*60*1000) },
+        { id: 4, text: "Yes sure, Company ID: CDX-2025-0871", sender: 'customer', time: new Date(Date.now() - 50*60*1000) },
+        { id: 5, text: "Checking your account now...\nOne moment please ⏳", sender: 'support', time: new Date(Date.now() - 48*60*1000) },
+        { id: 6, text: "Found the issue! Your tax template was disabled after the latest update.", sender: 'support', time: new Date(Date.now() - 45*60*1000) },
+        { id: 7, text: "I've fixed it from backend. Please try generating invoice again now ✅", sender: 'support', time: new Date(Date.now() - 44*60*1000) },
+        { id: 8, text: "It worked!! Thank you so much 😍", sender: 'customer', time: new Date(Date.now() - 40*60*1000) },
+        { id: 9, text: "You're most welcome!\nAnything else I can help with today?", sender: 'support', time: new Date(Date.now() - 30*60*1000) },
+    ];
+
+    // Auto scroll to bottom
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, []);
+
+    // Auto resize textarea
     useEffect(() => {
         const textarea = textareaRef.current;
         if (textarea) {
@@ -23,91 +43,123 @@ const WhatsAppChannel: React.FC = () => {
 
     useEffect(() => {
         textareaRef.current?.focus();
-        // Pre-fill with default text from backend
-        if (defaultText) setMessage(defaultText);
-    }, [defaultText]);
+    }, []);
 
-    const handleSend = (): void => {
+    const handleSend = () => {
         if (!message.trim()) return;
 
-        // WhatsApp API format
-        const phone = mobile.replace(/[^0-9]/g, ''); // Clean number
+        const phone = mobile.replace(/[^0-9]/g, '');
         const text = encodeURIComponent(message.trim());
-        const url = `https://wa.me/${phone}?text=${text}`;
+        const waUrl = `https://wa.me/${phone}?text=${text}`;
 
-        window.open(url, '_blank', 'noopener,noreferrer');
-
-        // Optional: Clear after send
-        // setMessage(defaultText || '');
+        window.open(waUrl, '_blank', 'noopener,noreferrer');
+        setMessage('');
     };
 
-    const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
+    const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSend();
         }
     };
 
+    const formatTime = (date: Date) => format(date, 'p');
+
     return (
         <>
-            <Head title="WhatsApp Support - CODEXSUN ERP" />
+            <Head title="Live Support - CODEXSUN ERP" />
 
-            <div className="flex flex-col h-screen bg-gray-50">
-                {/* Header */}
-                <header className="bg-white border-b border-gray-200 px-6 py-4 text-center">
-                    <h1 className="text-2xl font-bold text-green-600">WhatsApp Support</h1>
-                    <p className="text-sm text-gray-600 mt-1">
-                        Chat directly with CODEXSUN support team
-                    </p>
+            <div className="flex flex-col h-screen bg-gray-100">
+                {/* WhatsApp Header */}
+                <header className="bg-[#075e54] text-white px-4 py-3 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-400 rounded-full flex items-center justify-center font-bold text-lg">
+                        CS
+                    </div>
+                    <div className="flex-1">
+                        <h2 className="font-semibold">CODEXSUN Support</h2>
+                        <p className="text-xs opacity-90">Online • Click below to continue on WhatsApp</p>
+                    </div>
+                    <svg className="w-6 h-6 opacity-70" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
                 </header>
 
-                {/* Empty Chat Area */}
-                <main className="flex-1 overflow-y-auto px-6 py-12">
-                    <div className="max-w-2xl mx-auto text-center">
-                        <div className="bg-green-100 rounded-full w-28 h-28 mx-auto mb-6 flex items-center justify-center">
-                            <svg className="w-16 h-16 text-green-600" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.297-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 5.843h-.004c-1.575-.053-3.22-.917-4.407-2.582l-.003-.006-3.45 1.021 1.043-3.398-.007-.007c-1.745-1.297-2.781-3.007-2.78-4.907.001-3.073 2.506-5.568 5.59-5.568 1.493 0 2.895.582 3.947 1.634 1.052 1.052 1.634 2.454 1.634 3.947-.001 3.074-2.507 5.569-5.59 5.569z"/>
-                            </svg>
+                {/* Messages Area - Real WhatsApp Gradient Background */}
+                <main className="flex-1 overflow-y-auto px-2 py-4" style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%2309867a' fill-opacity='0.08' d='M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,112C672,96,768,96,864,112C960,128,1056,160,1152,160C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E")`,
+                    backgroundColor: '#0b141a',
+                    backgroundAttachment: 'fixed'
+                }}>
+                    <div className="max-w-4xl mx-auto space-y-3 px-4">
+                        {dummyMessages.map((msg) => (
+                            <div
+                                key={msg.id}
+                                className={`flex ${msg.sender === 'customer' ? 'justify-end' : 'justify-start'}`}
+                            >
+                                <div
+                                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl shadow-md ${
+                                        msg.sender === 'customer'
+                                            ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-none'
+                                            : 'bg-white text-gray-900 rounded-tl-none'
+                                    }`}
+                                >
+                                    <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                                    <p className={`text-xs mt-1 ${
+                                        msg.sender === 'customer' ? 'text-gray-600' : 'text-gray-500'
+                                    } text-right`}>
+                                        {formatTime(msg.time)}
+                                        {msg.sender === 'customer' && (
+                                            <span className="ml-1">✓✓</span>
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Typing indicator */}
+                        <div className="flex justify-start">
+                            <div className="bg-white px-4 py-3 rounded-2xl rounded-tl-none shadow-md">
+                                <div className="flex space-x-2">
+                                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+                                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75"></span>
+                                    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150"></span>
+                                </div>
+                            </div>
                         </div>
-                        <p className="text-lg font-medium text-gray-700">
-                            Send your message to start WhatsApp chat
-                        </p>
-                        <p className="text-sm text-gray-500 mt-2">
-                            Support Number: <strong>{mobile.replace(/(\d{4})(\d{3})(\d{3})/, '$1 $2 $3')}</strong>
-                        </p>
+
+                        <div ref={messagesEndRef} />
                     </div>
                 </main>
 
-                {/* Input Bar */}
-                <footer className="border-t border-gray-200 bg-white px-6 py-4">
-                    <div className="max-w-4xl mx-auto flex items-end gap-3">
+                {/* Input Bar - Exact WhatsApp Style */}
+                <footer className="bg-[#f0f2f5] border-t border-gray-200 px-2 py-2">
+                    <div className="max-w-4xl mx-auto bg-white rounded-full shadow-lg flex items-center px-4 py-2">
                         <textarea
                             ref={textareaRef}
                             rows={1}
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Type your message..."
-                            className="flex-1 resize-none rounded-lg border border-gray-300 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent max-h-32"
+                            placeholder="Type a message..."
+                            className="flex-1 resize-none outline-none px-2 py-2 max-h-32 overflow-y-auto text-gray-800"
                         />
-
                         <button
                             onClick={handleSend}
                             disabled={!message.trim()}
-                            className={`px-8 py-3 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                            className={`ml-2 p-3 rounded-full rounded-full transition-all ${
                                 message.trim()
-                                    ? 'bg-green-600 text-white hover:bg-green-700 shadow-lg'
-                                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                    ? 'bg-[#00a884] hover:bg-[#008f6f] text-white shadow-md'
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
                         >
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-6 h-6 rotate-45" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M1.101 21.757L23.8 12.028 1.101 2.3l.011 7.912 13.623 1.816-13.623 1.817-.011 7.912z"/>
                             </svg>
-                            Send
                         </button>
                     </div>
-                    <p className="text-xs text-gray-400 text-center mt-2">
-                        Press Enter to send • Opens WhatsApp in new tab
+
+                    <p className="text-center text-xs text-gray-500 mt-2 pb-2">
+                        Press Enter to send • Opens WhatsApp with your message
                     </p>
                 </footer>
             </div>
