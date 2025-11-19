@@ -22,7 +22,7 @@ export default function ChatChannel() {
         if (message.trim() === '') return;
 
         // Process: Open new tab to codexsun.com (you can append message as query if needed)
-        const url = `https://codexsun.com?msg=${encodeURIComponent(message)}`;
+        const url = `https://wa.me/${encodeURIComponent(message)}`;
         window.open(url, '_blank');
 
         // Optional: Clear input after send

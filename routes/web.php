@@ -437,3 +437,6 @@ use App\Http\Controllers\MessagingController;
 
 Route::get('/messaging/channel', [MessagingController::class, 'channel'])
     ->name('messaging.channel');
+
+Route::get('/messaging/whatsapp', [MessagingController::class, 'whatsappChannel'])
+    ->name('messaging.whatsapp');
