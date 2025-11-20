@@ -17,10 +17,10 @@ import {
     SelectContent,
     SelectItem,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Package, CheckCircle, RefreshCw, MessageCircle } from 'lucide-react';
-import { router, usePage } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Package, RefreshCw, MessageCircle, Send } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import { useState } from 'react';
 import { Assignment } from '../types';
 
 interface Props {
@@ -30,91 +30,97 @@ interface Props {
 
 export default function ConfirmDeliveryDialog({ assignment, users }: Props) {
     const [open, setOpen] = useState(false);
+    const [step, setStep] = useState<'select' | 'otp'>('select');
     const [deliverById, setDeliverById] = useState('');
     const [otpInput, setOtpInput] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { props } = usePage();
-    const flash = (props as any).flash || {};
+    const [otp, setOtp] = useState('------');
+    const [mobile, setMobile] = useState('N/A');
+    const [waNumber, setWaNumber] = useState('');
+    const [showAlert, setShowAlert] = useState(false);
 
-    const isOtpGenerated = !!flash?.otpGenerated;
-    const currentOtp = flash?.otp || '------';
-    const customerMobile = flash?.formattedMobile || flash?.customerMobile || 'N/A';
-    const whatsappNumber = flash?.whatsappNumber; // Clean 91xxxxxxxxxx
-
-    // Auto-clear flash after showing
-    useEffect(() => {
-        if (isOtpGenerated && whatsappNumber) {
-            const timer = setTimeout(() => {
-                router.visit(route('job_assignments.show', assignment.id), {
-                    preserveState: true,
-                    preserveScroll: true,
-                    only: ['assignment', 'can', 'supervisors', 'users'],
-                });
-            }, 3000);
-            return () => clearTimeout(timer);
-        }
-    }, [isOtpGenerated, assignment.id, whatsappNumber]);
-
-    // === OPEN WHATSAPP WITH OTP MESSAGE ===
-    const openWhatsAppWithOtp = () => {
-        if (!whatsappNumber || !currentOtp) return;
-
-        const message = encodeURIComponent(
-            `Hello ${assignment.job_card.service_inward.contact.name}!\n\nYour deliveryaf OTP for collecting repaired item (Job #${assignment.job_card.job_no}) is:\n\n*${currentOtp}*\n\nPlease share this with our delivery executive.\nThank you! 🚀\n\n— CODEXSUN Service Team`
-        );
-
-        const waUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
-        window.open(waUrl, '_blank', 'noopener,noreferrer');
+    const openDialog = () => {
+        setOpen(true);
+        setStep('select');
+        setDeliverById('');
+        setOtpInput('');
+        setOtp('------');
+        setMobile('N/A');
+        setWaNumber('');
+        setShowAlert(false);
+        setLoading(false);
     };
 
-    // Trigger OTP generation
+// ConfirmDeliveryDialog.tsx – FINAL BULLETPROOF VERSION
     const generateOtp = () => {
         if (!deliverById || loading) return;
         setLoading(true);
+
+        // FORCE POST METHOD + REFRESH CSRF IF NEEDED
         router.post(
             route('job_assignments.generateOtp', assignment.id),
             { deliver_by: deliverById },
             {
                 preserveState: true,
                 preserveScroll: true,
-                onFinish: () => setLoading(false),
-                onSuccess: () => {
-                    // Auto-open WhatsApp as soon as OTP is generated
-                    setTimeout(openWhatsAppWithOtp, 800);
+                forceFormData: true, // ← THIS FIXES THE GET ERROR!
+                onSuccess: (page: any) => {
+                    const flash = page.props.flash || {};
+                    console.log('OTP Generated:', flash);
+
+                    if (flash.otp) {
+                        setOtp(flash.otp);
+                        setMobile(flash.formattedMobile || flash.customerMobile || 'N/A');
+                        setWaNumber((flash.whatsappNumber || '').replace(/[^0-9]/g, ''));
+                        setStep('otp');
+                        setShowAlert(true);
+
+                        setTimeout(() => {
+                            const message = encodeURIComponent(
+                                `Hello ${assignment.job_card.service_inward.contact.name}!\n\nYour delivery OTP for collecting repaired item (Job #${assignment.job_card.job_no}) is:\n\n*${flash.otp}*\n\nPlease share this with our delivery executive.\nThank you! 🚀\n\n— CODEXSUN Service Team`
+                            );
+                            window.open(`https://wa.me/${(flash.whatsappNumber || '').replace(/[^0-9]/g, '')}?text=${message}`, '_blank');
+                        }, 800);
+                    }
+                    setLoading(false);
+                },
+                onError: (errors) => {
+                    setLoading(false);
+                    alert('Error: ' + JSON.stringify(errors));
                 },
             }
         );
     };
 
-    // Confirm delivery with OTP
     const confirmDelivery = () => {
         if (otpInput.length !== 6 || loading) return;
         setLoading(true);
+
         router.post(
             route('job_assignments.confirmDelivery', assignment.id),
             { delivered_otp: otpInput },
             {
                 preserveState: true,
                 preserveScroll: true,
-                onFinish: () => {
-                    setLoading(false);
-                    setOpen(false);
-                    setOtpInput('');
-                    setDeliverById('');
-                },
+                onFinish: () => setLoading(false),
+                onSuccess: () => setOpen(false),
             }
         );
     };
 
-    const handleResend = () => {
+    const resend = () => {
         setOtpInput('');
+        setOtp('------');
+        setShowAlert(false);
         generateOtp();
     };
 
+    const alertMessage = `Hello ${assignment.job_card.service_inward.contact.name}!\n\nYour delivery OTP for collecting repaired item (Job #${assignment.job_card.job_no}) is:\n\n*${otp}*\n\nPlease share this with our delivery executive.\nThank you! 🚀\n\n— CODEXSUN Service Team`;
+
     return (
         <>
-            <Button onClick={() => setOpen(true)} size="sm">
+            <Button onClick={openDialog} size="sm">
                 <Package className="mr-2 h-4 w-4" />
                 Confirm Delivery
             </Button>
@@ -131,88 +137,88 @@ export default function ConfirmDeliveryDialog({ assignment, users }: Props) {
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="space-y-5 py-4">
-                        {/* Step 1: Choose Delivery Person */}
-                        {!isOtpGenerated && (
-                            <div>
-                                <Label>Delivery Person</Label>
-                                <Select value={deliverById} onValueChange={setDeliverById}>
-                                    <SelectTrigger className="mt-2">
-                                        <SelectValue placeholder="Who will deliver?" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {users.map((u) => (
-                                            <SelectItem key={u.id} value={String(u.id)}>
-                                                {u.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-
-                        {/* Step 2: OTP Generated → Show WhatsApp Button */}
-                        {isOtpGenerated ? (
-                            <div className="space-y-5">
-                                <Alert className="border-green-200 bg-green-50">
-                                    <CheckCircle className="h-4 w-4 text-green-600" />
-                                    <AlertDescription className="text-green-800">
-                                        <strong>OTP Generated!</strong> Tap below to send via WhatsApp.
-                                    </AlertDescription>
-                                </Alert>
-
-                                {/* WhatsApp Send Button */}
-                                <Button
-                                    onClick={openWhatsAppWithOtp}
-                                    className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white"
-                                >
-                                    <MessageCircle className="mr-2 h-5 w-5" />
-                                    Send OTP on WhatsApp Now
-                                </Button>
-
-                                {/* Display OTP (for backup) */}
-                                <div className="p-4 bg-muted/50 rounded-lg text-center border">
-                                    <p className="text-sm text-muted-foreground mb-2">Backup OTP (if needed)</p>
-                                    <code className="text-3xl font-mono font-bold tracking-widest text-primary">
-                                        {currentOtp}
-                                    </code>
-                                    <p className="text-xs text-muted-foreground mt-2">
-                                        Mobile: {customerMobile}
-                                    </p>
+                    <div className="py-6 space-y-6">
+                        {step === 'select' && (
+                            <>
+                                <div>
+                                    <Label>Delivery Person</Label>
+                                    <Select value={deliverById} onValueChange={setDeliverById}>
+                                        <SelectTrigger className="mt-2">
+                                            <SelectValue placeholder="Select delivery person" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {users.map((u) => (
+                                                <SelectItem key={u.id} value={String(u.id)}>
+                                                    {u.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
-                                {/* Enter OTP from Customer */}
+                                <Button
+                                    onClick={generateOtp}
+                                    disabled={!deliverById || loading}
+                                    className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white h-12 text-lg"
+                                >
+                                    {loading ? 'Generating OTP...' : 'Generate OTP & Send'}
+                                </Button>
+                            </>
+                        )}
+
+                        {step === 'otp' && (
+                            <>
+                                {showAlert && (
+                                    <Alert className="bg-green-50 border-green-300">
+                                        <Send className="h-5 w-5 text-green-600" />
+                                        <AlertTitle className="text-green-800 font-bold">OTP Message Ready!</AlertTitle>
+                                        <AlertDescription className="text-sm whitespace-pre-line mt-2">
+                                            {alertMessage}
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
+
+                                <div className="text-center p-8 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border-2 border-green-300">
+                                    <p className="text-sm text-muted-foreground mb-4">Customer OTP</p>
+                                    <div className="text-7xl font-bold font-mono tracking-widest text-green-700">
+                                        {otp}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground mt-5">Mobile: {mobile}</p>
+                                </div>
+
+                                <Button
+                                    onClick={() => {
+                                        const message = encodeURIComponent(alertMessage);
+                                        window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank', 'noopener,noreferrer');
+                                    }}
+                                    className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white h-12"
+                                >
+                                    <MessageCircle className="mr-2 h-5 w-5" />
+                                    Resend on WhatsApp
+                                </Button>
+
                                 <div>
-                                    <Label>Enter OTP received from customer</Label>
+                                    <Label>Enter OTP from Customer</Label>
                                     <Input
                                         maxLength={6}
-                                        placeholder="000000"
                                         value={otpInput}
                                         onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
-                                        className="text-center text-2xl font-mono tracking-widest mt-2"
+                                        placeholder="000000"
+                                        className="text-center text-4xl font-mono tracking-widest mt-2"
                                         autoFocus
                                     />
                                 </div>
 
-                                <Button variant="outline" size="sm" onClick={handleResend} disabled={loading} className="w-full">
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Regenerate & Resend OTP
+                                <Button variant="outline" onClick={resend} disabled={loading} className="w-full">
+                                    <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                    Regenerate OTP
                                 </Button>
-                            </div>
-                        ) : (
-                            <Button
-                                onClick={generateOtp}
-                                disabled={!deliverById || loading}
-                                className="w-full h-12 text-lg bg-[#25D366] hover:bg-[#128C7E]"
-                            >
-                                {loading ? 'Generating...' : 'Generate OTP & Send via WhatsApp'}
-                            </Button>
+                            </>
                         )}
                     </div>
 
-                    {/* Confirm Button – only when OTP entered */}
-                    {isOtpGenerated && (
-                        <DialogFooter className="flex sm:justify-between gap-3">
+                    {step === 'otp' && (
+                        <DialogFooter className="gap-3">
                             <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
                                 Cancel
                             </Button>

@@ -297,47 +297,43 @@ class JobAssignmentController extends Controller
 
         $request->validate(['deliver_by' => 'required|exists:users,id']);
 
-        // Load required relationships
-        $assignment->loadMissing([
-            'jobCard.serviceInward.contact',
-        ]);
+        $assignment->loadMissing(['jobCard.serviceInward.contact']);
 
-        // Safety check - customer must have mobile
         $contact = $assignment->jobCard?->serviceInward?->contact;
         if (!$contact || !$mobile = $contact->mobile) {
             return back()->withErrors(['otp' => 'Customer mobile number is missing.']);
         }
 
-        // Generate 6-digit OTP
         $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Get delivery person name
         $deliverBy = User::findOrFail($request->deliver_by);
 
-        // Save OTP & delivery person
         $assignment->update([
-            'delivered_otp'           => $otp,
-            'delivered_confirmed_by'  => $deliverBy->name,
+            'delivered_otp'          => $otp,
+            'delivered_confirmed_by' => $deliverBy->name,
         ]);
 
-        // Clean & normalize mobile for frontend (return Indian format with +91 or 91)
         $clean = preg_replace('/\D/', '', $mobile);
-        if (strlen($clean) === 10) {
-            $clean = '91' . $clean;
-        }
-        $formattedMobile = '+91 ' . substr($clean, 2, 5) . ' ' . substr($clean, 7); // Optional pretty format
-        $whatsappNumber = $clean; // Raw for wa.me link
+        if (strlen($clean) === 10) $clean = '91' . $clean;
+        $formattedMobile = '+91 ' . substr($clean, 2, 5) . ' ' . substr($clean, 7);
+        $whatsappNumber = $clean;
 
-        \Log::info("OTP {$otp} generated for Job Assignment #{$assignment->id} | Mobile: {$whatsappNumber}");
+        $assignment->load(['jobCard.serviceInward.contact', 'user', 'status', 'adminVerifier', 'auditor']);
 
-        // Return only OTP + mobile info to frontend
-        return back()->with([
+        return Inertia::render('JobAssignments/Show', [
+            'assignment'  => $assignment,
+            'supervisors' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['super-admin', 'admin']))->orderBy('name')->get(['id', 'name']),
+            'users'       => User::orderBy('name')->get(['id', 'name']),
+            'can'         => [
+                'update'     => Gate::allows('update', $assignment),
+                'delete'     => Gate::allows('delete', $assignment),
+                'adminClose' => Gate::allows('adminClose', $assignment),
+            ],
+        ])->with([
             'otpGenerated'    => true,
             'otp'             => $otp,
-            'customerMobile'  => $mobile,              // Original as stored
-            'whatsappNumber'  => $whatsappNumber,      // Clean 91xxxxxxxxxx for wa.me
-            'formattedMobile' => $formattedMobile,     // Pretty: +91 XXXXX XXXXX
-            'message'         => "Your delivery OTP: {$otp}",
+            'customerMobile'  => $mobile,
+            'whatsappNumber'  => $whatsappNumber,
+            'formattedMobile' => $formattedMobile,
         ]);
     }
 
