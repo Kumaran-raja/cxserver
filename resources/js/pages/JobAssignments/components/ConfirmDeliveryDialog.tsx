@@ -1,4 +1,6 @@
 // resources/js/Pages/JobAssignments/components/ConfirmDeliveryDialog.tsx
+// CODEXSUN ERP – Laravel 12 + Inertia React – Nov 21 2025 – FINAL CLEAN VERSION
+
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -18,7 +20,7 @@ import {
     SelectItem,
 } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Package, RefreshCw, MessageCircle, Send } from 'lucide-react';
+import { Package, RefreshCw, MessageCircle, Send, Loader2 } from 'lucide-react';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Assignment } from '../types';
@@ -33,7 +35,9 @@ export default function ConfirmDeliveryDialog({ assignment, users }: Props) {
     const [step, setStep] = useState<'select' | 'otp'>('select');
     const [deliverById, setDeliverById] = useState('');
     const [otpInput, setOtpInput] = useState('');
-    const [loading, setLoading] = useState(false);
+
+    const [generatingOtp, setGeneratingOtp] = useState(false);
+    const [confirmingDelivery, setConfirmingDelivery] = useState(false);
 
     const [otp, setOtp] = useState('------');
     const [mobile, setMobile] = useState('N/A');
@@ -49,62 +53,60 @@ export default function ConfirmDeliveryDialog({ assignment, users }: Props) {
         setMobile('N/A');
         setWaNumber('');
         setShowAlert(false);
-        setLoading(false);
     };
 
-// ConfirmDeliveryDialog.tsx – FINAL BULLETPROOF VERSION
     const generateOtp = () => {
-        if (!deliverById || loading) return;
-        setLoading(true);
+        if (!deliverById || generatingOtp) return;
+        setGeneratingOtp(true);
 
-        // FORCE POST METHOD + REFRESH CSRF IF NEEDED
         router.post(
             route('job_assignments.generateOtp', assignment.id),
             { deliver_by: deliverById },
             {
+                forceFormData: true,
                 preserveState: true,
                 preserveScroll: true,
-                forceFormData: true, // ← THIS FIXES THE GET ERROR!
                 onSuccess: (page: any) => {
-                    const flash = page.props.flash || {};
-                    console.log('OTP Generated:', flash);
-
-                    if (flash.otp) {
-                        setOtp(flash.otp);
-                        setMobile(flash.formattedMobile || flash.customerMobile || 'N/A');
-                        setWaNumber((flash.whatsappNumber || '').replace(/[^0-9]/g, ''));
+                    const props = page.props;
+                    if (props.otp) {
+                        setOtp(props.otp);
+                        setMobile(props.formattedMobile || 'N/A');
+                        setWaNumber((props.whatsappNumber || '').replace(/[^0-9]/g, ''));
                         setStep('otp');
                         setShowAlert(true);
 
                         setTimeout(() => {
                             const message = encodeURIComponent(
-                                `Hello ${assignment.job_card.service_inward.contact.name}!\n\nYour delivery OTP for collecting repaired item (Job #${assignment.job_card.job_no}) is:\n\n*${flash.otp}*\n\nPlease share this with our delivery executive.\nThank you! 🚀\n\n— CODEXSUN Service Team`
+                                `Hello ${assignment.job_card.service_inward.contact.name}!\n\nYour delivery OTP (Job #${assignment.job_card.job_no}) is:\n\n*${props.otp}*\n\nThank you! 🚀\n— CODEXSUN Team`
                             );
-                            window.open(`https://wa.me/${(flash.whatsappNumber || '').replace(/[^0-9]/g, '')}?text=${message}`, '_blank');
+                            window.open(`https://wa.me/${(props.whatsappNumber || '').replace(/[^0-9]/g, '')}?text=${message}`, '_blank');
                         }, 800);
                     }
-                    setLoading(false);
                 },
-                onError: (errors) => {
-                    setLoading(false);
-                    alert('Error: ' + JSON.stringify(errors));
-                },
+                onError: (errors) => alert('Generate OTP Failed: ' + JSON.stringify(errors)),
+                onFinish: () => setGeneratingOtp(false),
             }
         );
     };
 
     const confirmDelivery = () => {
-        if (otpInput.length !== 6 || loading) return;
-        setLoading(true);
+        if (otpInput.length !== 6 || confirmingDelivery) return;
+
+        setConfirmingDelivery(true);
 
         router.post(
             route('job_assignments.confirmDelivery', assignment.id),
             { delivered_otp: otpInput },
             {
+                forceFormData: true,
                 preserveState: true,
                 preserveScroll: true,
-                onFinish: () => setLoading(false),
                 onSuccess: () => setOpen(false),
+                onError: (errors) => {
+                    alert(errors.delivered_otp || 'Invalid OTP');
+                    setOtpInput('');
+                },
+                onFinish: () => setConfirmingDelivery(false),
             }
         );
     };
@@ -116,7 +118,7 @@ export default function ConfirmDeliveryDialog({ assignment, users }: Props) {
         generateOtp();
     };
 
-    const alertMessage = `Hello ${assignment.job_card.service_inward.contact.name}!\n\nYour delivery OTP for collecting repaired item (Job #${assignment.job_card.job_no}) is:\n\n*${otp}*\n\nPlease share this with our delivery executive.\nThank you! 🚀\n\n— CODEXSUN Service Team`;
+    const whatsappMessage = `Hello ${assignment.job_card.service_inward.contact.name}!\n\nYour delivery OTP (Job #${assignment.job_card.job_no}) is:\n\n*${otp}*\n\nThank you! 🚀\n— CODEXSUN Team`;
 
     return (
         <>
@@ -142,7 +144,7 @@ export default function ConfirmDeliveryDialog({ assignment, users }: Props) {
                             <>
                                 <div>
                                     <Label>Delivery Person</Label>
-                                    <Select value={deliverById} onValueChange={setDeliverById}>
+                                    <Select value={deliverById} onValueChange={setDeliverById} disabled={generatingOtp}>
                                         <SelectTrigger className="mt-2">
                                             <SelectValue placeholder="Select delivery person" />
                                         </SelectTrigger>
@@ -158,10 +160,17 @@ export default function ConfirmDeliveryDialog({ assignment, users }: Props) {
 
                                 <Button
                                     onClick={generateOtp}
-                                    disabled={!deliverById || loading}
+                                    disabled={!deliverById || generatingOtp}
                                     className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white h-12 text-lg"
                                 >
-                                    {loading ? 'Generating OTP...' : 'Generate OTP & Send'}
+                                    {generatingOtp ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                            Generating OTP...
+                                        </>
+                                    ) : (
+                                        'Generate OTP & Send'
+                                    )}
                                 </Button>
                             </>
                         )}
@@ -171,9 +180,9 @@ export default function ConfirmDeliveryDialog({ assignment, users }: Props) {
                                 {showAlert && (
                                     <Alert className="bg-green-50 border-green-300">
                                         <Send className="h-5 w-5 text-green-600" />
-                                        <AlertTitle className="text-green-800 font-bold">OTP Message Ready!</AlertTitle>
+                                        <AlertTitle className="text-green-800 font-bold">OTP Sent!</AlertTitle>
                                         <AlertDescription className="text-sm whitespace-pre-line mt-2">
-                                            {alertMessage}
+                                            {whatsappMessage}
                                         </AlertDescription>
                                     </Alert>
                                 )}
@@ -187,10 +196,7 @@ export default function ConfirmDeliveryDialog({ assignment, users }: Props) {
                                 </div>
 
                                 <Button
-                                    onClick={() => {
-                                        const message = encodeURIComponent(alertMessage);
-                                        window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank', 'noopener,noreferrer');
-                                    }}
+                                    onClick={() => window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(whatsappMessage)}`, '_blank')}
                                     className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white h-12"
                                 >
                                     <MessageCircle className="mr-2 h-5 w-5" />
@@ -202,15 +208,16 @@ export default function ConfirmDeliveryDialog({ assignment, users }: Props) {
                                     <Input
                                         maxLength={6}
                                         value={otpInput}
-                                        onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))}
+                                        onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                         placeholder="000000"
                                         className="text-center text-4xl font-mono tracking-widest mt-2"
                                         autoFocus
+                                        disabled={confirmingDelivery}
                                     />
                                 </div>
 
-                                <Button variant="outline" onClick={resend} disabled={loading} className="w-full">
-                                    <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                <Button variant="outline" onClick={resend} disabled={generatingOtp || confirmingDelivery} className="w-full">
+                                    <RefreshCw className={`mr-2 h-4 w-4 ${generatingOtp ? 'animate-spin' : ''}`} />
                                     Regenerate OTP
                                 </Button>
                             </>
@@ -219,15 +226,22 @@ export default function ConfirmDeliveryDialog({ assignment, users }: Props) {
 
                     {step === 'otp' && (
                         <DialogFooter className="gap-3">
-                            <Button variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+                            <Button variant="outline" onClick={() => setOpen(false)} disabled={confirmingDelivery}>
                                 Cancel
                             </Button>
                             <Button
                                 onClick={confirmDelivery}
-                                disabled={otpInput.length !== 6 || loading}
+                                disabled={otpInput.length !== 6 || confirmingDelivery}
                                 className="bg-green-600 hover:bg-green-700"
                             >
-                                {loading ? 'Confirming...' : 'Confirm Delivery'}
+                                {confirmingDelivery ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Confirming...
+                                    </>
+                                ) : (
+                                    'Confirm Delivery'
+                                )}
                             </Button>
                         </DialogFooter>
                     )}

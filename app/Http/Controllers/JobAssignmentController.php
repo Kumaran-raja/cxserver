@@ -291,6 +291,8 @@ class JobAssignmentController extends Controller
 
 
     // Generate OTP & Return to Frontend (no server-side WhatsApp opening)
+    // app/Http/Controllers/JobAssignmentController.php
+
     public function generateOtp(Request $request, JobAssignment $assignment)
     {
         $this->authorize('verifyDelivery', $assignment);
@@ -317,10 +319,9 @@ class JobAssignmentController extends Controller
         $formattedMobile = '+91 ' . substr($clean, 2, 5) . ' ' . substr($clean, 7);
         $whatsappNumber = $clean;
 
-        $assignment->load(['jobCard.serviceInward.contact', 'user', 'status', 'adminVerifier', 'auditor']);
-
+        // ✅ THIS IS THE FIX – Return full Inertia page with flash
         return Inertia::render('JobAssignments/Show', [
-            'assignment'  => $assignment,
+            'assignment'  => $assignment->load(['jobCard.serviceInward.contact', 'user', 'status', 'adminVerifier', 'auditor']),
             'supervisors' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['super-admin', 'admin']))->orderBy('name')->get(['id', 'name']),
             'users'       => User::orderBy('name')->get(['id', 'name']),
             'can'         => [
@@ -329,11 +330,10 @@ class JobAssignmentController extends Controller
                 'adminClose' => Gate::allows('adminClose', $assignment),
             ],
         ])->with([
-            'otpGenerated'    => true,
+            'success'         => 'OTP Generated Successfully!',
             'otp'             => $otp,
-            'customerMobile'  => $mobile,
-            'whatsappNumber'  => $whatsappNumber,
             'formattedMobile' => $formattedMobile,
+            'whatsappNumber'  => $whatsappNumber,
         ]);
     }
 
@@ -341,8 +341,6 @@ class JobAssignmentController extends Controller
     public function confirmDelivery(Request $request, JobAssignment $assignment)
     {
         $this->authorize('verifyDelivery', $assignment);
-
-        dd($request);
 
         $request->validate(['delivered_otp' => 'required|digits:6']);
 
