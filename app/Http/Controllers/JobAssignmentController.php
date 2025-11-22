@@ -464,6 +464,75 @@ class JobAssignmentController extends Controller
         return redirect()->route('job_assignments.index')->with('success', 'Job closed successfully.');
     }
 
+    public function finalsss(Request $request)
+    {
+        $this->authorize('viewAny', JobAssignment::class);
+
+        $perPage = $request->input('per_page', 25);
+        $perPage = in_array($perPage, [10, 25, 50, 100]) ? $perPage : 25;
+
+        $query = JobAssignment::with([
+            'jobCard.serviceInward.contact',
+            'user',
+            'adminVerifier',
+            'auditor'
+        ])
+            ->where('stage', 'verified')
+            ->where('is_active', false) // Hidden from main views
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->search;
+                $q->whereHas('jobCard', fn($j) => $j->where('job_no', 'like', "%{$search}%"))
+                    ->orWhereHas('jobCard.serviceInward', fn($i) => $i->where('rma', 'like', "%{$search}%"))
+                    ->orWhereHas('jobCard.serviceInward.contact', fn($c) => $c->where('name', 'like', "%{$search}%"));
+            })
+            ->latest('admin_verified_at');
+
+        $assignments = $query->paginate($perPage)->withQueryString();
+
+        return Inertia::render('JobAssignments/Closed', [
+            'assignments' => $assignments,
+            'filters' => $request->only(['search', 'per_page']),
+            'can' => [
+                'viewAny' => Gate::allows('viewAny', JobAssignment::class),
+            ],
+        ]);
+    }
+
+    public function finals(Request $request)
+    {
+        $this->authorize('viewAny', JobAssignment::class);
+
+        $perPage = $request->input('per_page', 50);
+        $perPage = in_array($perPage, [10, 25, 50, 100]) ? $perPage : 50;
+
+        $query = JobAssignment::with(['jobCard.serviceInward.contact', 'user', 'status', 'adminVerifier'])
+            ->where('is_active', false)
+            ->when($request->filled('search'), fn($q) => $q->where(function ($sq) use ($request) {
+                $search = $request->search;
+                $sq->whereHas('jobCard', fn($j) => $j->where('job_no', 'like', "%{$search}%"))
+                    ->orWhereHas('jobCard.serviceInward', fn($i) => $i->where('rma', 'like', "%{$search}%"))
+                    ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%"));
+            }))
+            ->when($request->filled('stage'), fn($q) => $q->where('stage', $request->stage))
+            ->when($request->filled('technician_filter'), fn($q) => $q->where('user_id', $request->technician_filter))
+            ->latest('admin_verified_at');
+
+        $assignments = $query->paginate($perPage)->withQueryString();
+
+        return Inertia::render('JobAssignments/Index', [
+            'assignments' => $assignments,
+            'filters' => $request->only(['search', 'stage', 'technician_filter', 'per_page']),
+            'stages' => ['assigned', 'in_progress', 'completed', 'ready_for_delivery', 'generate_otp', 'delivered', 'verified'],
+            'technicians' => User::orderBy('name')->get(['id', 'name']),
+            'can' => [
+                'create' => Gate::allows('create', JobAssignment::class),
+                'admin_close' => Gate::allows('adminClose', JobAssignment::class),
+            ],
+            'trashedCount' => JobAssignment::onlyTrashed()->count(),
+        ]);
+    }
+
+
     // Trash & Restore
     public function destroy(JobAssignment $assignment)
     {

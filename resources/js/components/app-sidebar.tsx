@@ -39,11 +39,11 @@ import { index as contacts } from '@/routes/contacts';
 import { index as service_inward } from '@/routes/service_inwards/index';
 import { index as job_cards } from '@/routes/job_cards/index';
 // import { index as users } from '@/routes/users';
-import { index as job_assignment } from '@/routes/job_assignments/index';
+import { index as job_assignment, finals } from '@/routes/job_assignments/index';
 import {index as service_parts } from '@/routes/service_parts/index';
 import {index as job_spare_requests } from '@/routes/job_spare_requests';
 import {index as out_service_centers } from '@/routes/out_service_centers/index';
-import {index as ready_for_deliveries } from '@/routes/ready_for_deliveries/index';
+// import {index as ready_for_deliveries } from '@/routes/ready_for_deliveries/index';
 import { NavService } from '@/components/nav-service';
 import { NavSpares } from '@/components/nav-spares';
 import { index as todos } from '@/routes/todos';
@@ -93,8 +93,8 @@ const ServiceNavItems: NavItem[] = [
         icon: NotebookPen,
     },
     {
-        title: 'Ready For Delivery',
-        href: ready_for_deliveries(),
+        title: 'admin Closed',
+        href: finals(),
         icon: PackageCheck,
     },
 ];

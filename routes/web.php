@@ -199,7 +199,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('job_assignments/{assignment}/audit', [JobAssignmentController::class, 'audit'])->name('job_assignments.audit');
     Route::post('job_assignments/{assignment}/close_admin', [JobAssignmentController::class, 'closeByAdmin'])->name('job_assignments.close_admin');
 
+    Route::get('job_assignments/finals', [JobAssignmentController::class, 'finals'])->name('job_assignments.finals');
+
     Route::get('job_assignments/{assignment}', [JobAssignmentController::class, 'show'])->name('job_assignments.show');
+
 });
 
 
