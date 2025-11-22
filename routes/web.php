@@ -189,8 +189,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('job_assignments/{assignment}/deliver', [JobAssignmentController::class, 'deliver'])->name('job_assignments.deliver');
 
-    Route::post('job_assignments/{assignment}/generateOtp', [JobAssignmentController::class, 'generateOtp'])->name('job_assignments.generateOtp');
-    Route::post('job-assignments/{jobAssignment}/confirm-delivery', [JobAssignmentController::class, 'confirmDelivery'])
+    Route::post('job-assignments/{assignment}/generate-otp', [JobAssignmentController::class, 'generateOtp'])
+        ->name('job_assignments.generateOtp');
+
+    Route::post('job-assignments/{assignment}/confirm-delivery', [JobAssignmentController::class, 'confirmDelivery'])
         ->name('job_assignments.confirmDelivery');
 
     Route::get('job_assignments/{assignment}/close', [JobAssignmentController::class, 'adminClose'])->name('job_assignments.close');

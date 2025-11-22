@@ -295,26 +295,23 @@ class JobAssignmentController extends Controller
     {
         $this->authorize('verifyDelivery', $assignment);
 
-        // Only allow from ready_for_delivery
         if ($assignment->stage !== 'ready_for_delivery') {
-            return response()->json(['error' => 'Invalid stage for OTP generation'], 403);
+            return back()->withErrors(['otp' => 'This job is not ready for delivery yet.']);
         }
 
-        $request->validate([
-            'deliver_by' => 'required|exists:users,id'
-        ]);
+        $request->validate(['deliver_by' => 'required|exists:users,id']);
 
         $assignment->loadMissing(['jobCard.serviceInward.contact']);
         $contact = $assignment->jobCard?->serviceInward?->contact;
 
-        if (!$contact || !$mobile = $contact->mobile) {
-            return response()->json(['error' => 'Customer mobile number is missing.'], 422);
+        if (!$contact?->mobile) {
+            return back()->withErrors(['otp' => 'Customer mobile number is missing.']);
         }
 
         $otp = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
         $deliverBy = User::findOrFail($request->deliver_by);
 
-        $clean = preg_replace('/\D/', '', $mobile);
+        $clean = preg_replace('/\D/', '', $contact->mobile);
         if (strlen($clean) === 10) $clean = '91' . $clean;
 
         $formattedMobile = '+91 ' . substr($clean, 2, 5) . ' ' . substr($clean, 7);
@@ -322,25 +319,17 @@ class JobAssignmentController extends Controller
 
         DB::transaction(function () use ($assignment, $otp, $deliverBy) {
             $assignment->update([
-                'current_otp'             => $otp,                    // ← NEW COLUMN: Active OTP
-                'delivered_otp'           => $otp,                    // ← Keep for final record
-                'delivered_confirmed_by'  => $deliverBy->name,
-                'stage'                   => 'generate_otp',         // ← NEW STAGE
-                'position'                => JobAssignment::where('stage', 'generate_otp')->max('position') + 1,
+                'current_otp'            => $otp,
+                'delivered_otp'          => $otp,
+                'delivered_confirmed_by' => $deliverBy->name,
+                'stage'                  => 'generate_otp',
+                'position'               => JobAssignment::where('stage', 'generate_otp')->max('position') + 1,
             ]);
         });
 
-        // Return full page with flash data (Inertia best practice)
         return Inertia::render('JobAssignments/Show', [
-            'assignment'  => $assignment->fresh([
-                'jobCard.serviceInward.contact',
-                'user',
-                'status',
-                'adminVerifier',
-                'auditor'
-            ]),
-            'supervisors' => User::whereHas('roles', fn($q) => $q->whereIn('name', ['super-admin', 'admin']))
-                ->orderBy('name')->get(['id', 'name']),
+            'assignment'  => $assignment->fresh(['jobCard.serviceInward.contact', 'user', 'status', 'adminVerifier', 'auditor']),
+            'supervisors' => User::supervisor()->orderBy('name')->get(['id', 'name']),
             'users'       => User::orderBy('name')->get(['id', 'name']),
             'can'         => [
                 'update'     => Gate::allows('update', $assignment),
@@ -348,7 +337,7 @@ class JobAssignmentController extends Controller
                 'adminClose' => Gate::allows('adminClose', $assignment),
             ],
         ])->with([
-            'success'         => 'OTP Generated & Sent!',
+            'success'         => 'OTP Generated & Sent via WhatsApp!',
             'otp'             => $otp,
             'formattedMobile' => $formattedMobile,
             'whatsappNumber'  => $whatsappNumber,
@@ -360,9 +349,9 @@ class JobAssignmentController extends Controller
     {
         $this->authorize('verifyDelivery', $assignment);
 
-        // Only allow from generate_otp stage
+        // Stage guard
         if ($assignment->stage !== 'generate_otp') {
-            return response()->json(['error' => 'Invalid stage for delivery confirmation'], 403);
+            return back()->withErrors(['delivered_otp' => 'Delivery OTP has not been generated yet or already confirmed.']);
         }
 
         $request->validate([
@@ -370,22 +359,22 @@ class JobAssignmentController extends Controller
         ]);
 
         if ($request->delivered_otp !== $assignment->current_otp) {
-            return back()->withErrors(['delivered_otp' => 'Invalid or expired OTP']);
+            return back()->withErrors(['delivered_otp' => 'Invalid or expired OTP. Please regenerate if needed.']);
         }
 
         DB::transaction(function () use ($assignment) {
             $assignment->update([
-                'stage'                   => 'delivered',
-                'delivered_confirmed_at'  => now(),
-                'delivered_confirmed_by'  => auth()->user()->name,
-                'current_otp'             => null,  // ← Clear active OTP
-                'position'                => JobAssignment::where('stage', 'delivered')->max('position') + 1,
+                'stage'                  => 'delivered',
+                'delivered_confirmed_at' => now(),
+                'delivered_confirmed_by' => auth()->user()->name,
+                'current_otp'            => null, // Clear active OTP
+                'position'               => JobAssignment::where('stage', 'delivered')->max('position') + 1,
             ]);
         });
 
         return redirect()
             ->route('job_assignments.show', $assignment)
-            ->with('success', 'Delivery confirmed successfully! Job is now Delivered.');
+            ->with('success', 'Delivery confirmed successfully! Job moved to Delivered.');
     }
 
 
