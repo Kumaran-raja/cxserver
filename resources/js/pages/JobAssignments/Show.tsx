@@ -1,8 +1,10 @@
 // resources/js/Pages/JobAssignments/Show.tsx
+// CODEXSUN ERP – Laravel 12 + Inertia React – Nov 22 2025 – FINAL SPLIT DELIVERY FLOW
+
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
 import { format } from 'date-fns';
-import { ArrowLeft, Edit } from 'lucide-react';
+import { ArrowLeft, Edit, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -12,7 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import StartServiceButton from './components/StartServiceButton';
 import CompleteServiceDialog from './components/CompleteServiceDialog';
 import ReadyForDeliveryDialog from './components/ReadyForDeliveryDialog';
-import ConfirmDeliveryDialog from './components/ConfirmDeliveryDialog';
+import GenerateOtpDialog from './components/GenerateOtpDialog';         // ← NEW: Step 1
+import ConfirmDeliveryOtpDialog from './components/ConfirmDeliveryOtpDialog'; // ← NEW: Step 2
 import AdminCloseDialog from './components/AdminCloseDialog';
 
 import type { Props } from './types';
@@ -26,17 +29,24 @@ const breadcrumbs = (assignment: Props['assignment']) => [
 export default function Show({ assignment, can, supervisors, users }: Props) {
     const getStageBadge = (stage: string | null) => {
         if (!stage) return <Badge variant="secondary">—</Badge>;
-        const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
+
+        const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
             assigned: 'secondary',
             in_progress: 'default',
             completed: 'outline',
             ready_for_delivery: 'secondary',
+            generate_otp: 'default',        // ← NEW STAGE: OTP Generated & Sent
             delivered: 'default',
             verified: 'outline',
         };
+
+        const labels: Record<string, string> = {
+            generate_otp: 'OTP Sent',
+        };
+
         return (
             <Badge variant={variants[stage] || 'secondary'} className="capitalize">
-                {stage.replace('_', ' ')}
+                {labels[stage] || stage.replace(/_/g, ' ')}
             </Badge>
         );
     };
@@ -75,9 +85,33 @@ export default function Show({ assignment, can, supervisors, users }: Props) {
                             {/* Stage-Specific Action Buttons */}
                             {assignment.stage === 'assigned' && <StartServiceButton assignmentId={assignment.id} />}
                             {assignment.stage === 'in_progress' && <CompleteServiceDialog assignment={assignment} />}
-                            {assignment.stage === 'completed' && <ReadyForDeliveryDialog assignment={assignment} supervisors={supervisors} />}
-                            {assignment.stage === 'ready_for_delivery' && <ConfirmDeliveryDialog assignment={assignment} users={users} />}
-                            {assignment.stage === 'delivered' && can.adminClose && <AdminCloseDialog assignment={assignment} />}
+                            {assignment.stage === 'completed' && (
+                                <ReadyForDeliveryDialog assignment={assignment} supervisors={supervisors} />
+                            )}
+
+                            {/* NEW FLOW: Two Separate Steps */}
+                            {assignment.stage === 'ready_for_delivery' && (
+                                <GenerateOtpDialog
+                                    assignment={assignment}
+                                    users={users}
+                                    onOtpGenerated={() => {
+                                        // Optional: Flash message or reload assignment
+                                        // router.reload({ only: ['assignment'] });
+                                    }}
+                                />
+                            )}
+
+                            {assignment.stage === 'generate_otp' && (
+                                <ConfirmDeliveryOtpDialog
+                                    assignment={assignment}
+                                    initialOtp={assignment.current_otp || '------'}
+                                    initialMobile={assignment.job_card.service_inward.contact.phone || 'N/A'}
+                                />
+                            )}
+
+                            {assignment.stage === 'delivered' && can.adminClose && (
+                                <AdminCloseDialog assignment={assignment} />
+                            )}
                         </div>
                     </div>
 
@@ -177,7 +211,7 @@ export default function Show({ assignment, can, supervisors, users }: Props) {
                             )}
 
                             {/* Billing & Delivery */}
-                            {(assignment.billing_amount || assignment.billing_details || assignment.delivered_confirmed_at) && (
+                            {(assignment.billing_amount || assignment.billing_details || assignment.delivered_confirmed_at || assignment.stage === 'generate_otp') && (
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>Billing & Delivery</CardTitle>
@@ -200,9 +234,33 @@ export default function Show({ assignment, can, supervisors, users }: Props) {
                                         {assignment.billing_confirmed_by && (
                                             <div>
                                                 <p className="text-sm font-medium text-muted-foreground">Billing Confirmed By</p>
-                                                <p className="font-medium">{typeof assignment.billing_confirmed_by === 'string' ? assignment.billing_confirmed_by : assignment.billing_confirmed_by.name}</p>
+                                                <p className="font-medium">
+                                                    {typeof assignment.billing_confirmed_by === 'string'
+                                                        ? assignment.billing_confirmed_by
+                                                        : assignment.billing_confirmed_by.name}
+                                                </p>
                                             </div>
                                         )}
+
+                                        {/* Show OTP Info when in generate_otp stage */}
+                                        {assignment.stage === 'generate_otp' && assignment.current_otp && (
+                                            <>
+                                                <Separator className="my-4" />
+                                                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                                    <p className="text-sm font-medium text-green-800 flex items-center gap-2">
+                                                        <Package className="h-4 w-4" />
+                                                        Delivery OTP Sent to Customer
+                                                    </p>
+                                                    <p className="mt-2 font-mono text-2xl font-bold text-green-700">
+                                                        {assignment.current_otp}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        Waiting for customer OTP confirmation...
+                                                    </p>
+                                                </div>
+                                            </>
+                                        )}
+
                                         {assignment.delivered_confirmed_at && (
                                             <>
                                                 <Separator className="my-4" />

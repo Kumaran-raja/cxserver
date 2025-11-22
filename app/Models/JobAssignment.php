@@ -40,6 +40,7 @@ class JobAssignment extends Model
         'audited_at',
         'audit_note',
         'is_active',
+        'current_otp',
     ];
 
     protected $casts = [

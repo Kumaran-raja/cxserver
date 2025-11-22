@@ -32,6 +32,7 @@ return new class extends Migration {
             $table->dateTime('delivered_confirmed_at')->nullable();
             $table->string('delivered_confirmed_by')->nullable();
             $table->foreignId('delivered_confirmed_by_id')->nullable()->constrained('users');
+            $table->string('current_otp')->nullable();
             $table->string('delivered_otp')->nullable();
             $table->foreignId('service_status_id')->constrained('service_statuses');
             $table->foreignId('admin_verifier_id')->nullable()->constrained('users');
