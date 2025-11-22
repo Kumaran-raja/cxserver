@@ -86,7 +86,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Job Assignment', href: job_assignments().url },
 ];
 
-export default function Index() {
+export default function finals() {
     const { assignments, filters, stages, technicians, can, trashedCount } =
         usePage().props as unknown as Props;
     const route = useRoute();
@@ -268,7 +268,7 @@ export default function Index() {
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Job Assignments" />
+            <Head title="Job Assignments - completed" />
 
             <div className="py-6">
                 <div className="mx-auto space-y-6 sm:px-6 lg:px-8">
@@ -276,10 +276,10 @@ export default function Index() {
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl font-bold tracking-tight text-black/50">
-                                Job Assignments
+                                Job Assignments - completed
                             </h1>
                             <p className="mt-1 text-sm text-black/30">
-                                Manage service job assignments
+                                Manage completed job assignments
                             </p>
                         </div>
                         <div className="flex gap-3">
