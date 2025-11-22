@@ -45,7 +45,7 @@ return new class extends Migration {
             $table->timestamps();
             $table->softDeletes();
 
-            $table->unique(['job_card_id', 'user_id']);
+            $table->unique(['job_card_id', 'user_id'], 'job_assignments_job_card_id_user_id_unique');
         });
 
         // New child table: job_assignment_spares (for spares included in the service)

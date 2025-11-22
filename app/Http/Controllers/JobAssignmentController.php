@@ -184,22 +184,44 @@ class JobAssignmentController extends Controller
     {
         $this->authorize('create', JobAssignment::class);
 
-        $data = $request->validate([
-            'job_card_id' => 'required|exists:job_cards,id',
-            'user_id' => 'required|exists:users,id',
-            'service_status_id' => 'nullable|exists:service_statuses,id',
-            'remarks' => 'nullable|string',
+        $validated = $request->validate([
+            'job_card_id' => [
+                'required',
+                'exists:job_cards,id',
+                // CUSTOM RULE: Prevent duplicate active assignment
+                function ($attribute, $value, $fail) use ($request) {
+                    $exists = JobAssignment::where('job_card_id', $value)
+                        ->where('user_id', $request->user_id)
+                        ->where('is_active', true)
+                        ->exists();
+
+                    if ($exists) {
+                        $jobCard = \App\Models\JobCard::find($value);
+                        $engineer = \App\Models\User::find($request->user_id);
+
+                        $fail("Job #{$jobCard->job_no} is already assigned to {$engineer->name}. Cannot assign again.");
+                    }
+                },
+            ],
+            'user_id'      => 'required|exists:users,id',
+            'remarks'      => 'nullable|string',
         ]);
 
-        $data['assigned_at'] = now();
-        $data['stage'] = 'assigned';
-        $data['position'] = JobAssignment::where('stage', 'assigned')->max('position') + 1;
-        $data['is_active'] = true;
-        $data['service_status_id'] = 1;
+        // Proceed with creation
+        $assignment = JobAssignment::create([
+            'job_card_id'       => $validated['job_card_id'],
+            'user_id'           => $validated['user_id'],
+            'remarks'           => $validated['remarks'] ?? null,
+            'assigned_at'       => now(),
+            'stage'             => 'assigned',
+            'position'          => JobAssignment::where('stage', 'assigned')->max('position') + 1,
+            'is_active'         => true,
+            'service_status_id' => 1, // or dynamic
+        ]);
 
-        JobAssignment::create($data);
-
-        return redirect()->route('job_assignments.index')->with('success', 'Engineer assigned successfully.');
+        return redirect()
+            ->route('job_assignments.show', $assignment)
+            ->with('success', 'Job assigned successfully!');
     }
 
     // Service: Engineer updates work (in_progress → completed)
