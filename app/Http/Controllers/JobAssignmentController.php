@@ -99,16 +99,16 @@ class JobAssignmentController extends Controller
         $assignment = JobAssignment::findOrFail($request->assignment_id);
 
         $allowedTransitions = [
-            'assigned'          => ['in_progress'],
-            'in_progress'       => ['completed'],
-            'completed'         => ['ready_for_delivery'],
-            'ready_for_delivery'=> ['generate_otp'],      // ← Only generate OTP next
-            'generate_otp'      => ['delivered'],         // ← Only confirm OTP next
-            'delivered'         => ['verified'],
+            'assigned' => ['in_progress'],
+            'in_progress' => ['completed'],
+            'completed' => ['ready_for_delivery'],
+            'ready_for_delivery' => ['generate_otp'],      // ← Only generate OTP next
+            'generate_otp' => ['delivered'],         // ← Only confirm OTP next
+            'delivered' => ['verified'],
         ];
 
         $from = $assignment->stage;
-        $to   = $request->stage;
+        $to = $request->stage;
 
         if ($from !== $to && (!isset($allowedTransitions[$from]) || !in_array($to, $allowedTransitions[$from]))) {
             return response()->json(['error' => 'Invalid stage transition'], 403);
@@ -120,7 +120,7 @@ class JobAssignmentController extends Controller
                 ->increment('position');
 
             $assignment->update([
-                'stage'    => $request->stage,
+                'stage' => $request->stage,
                 'position' => $request->position,
             ]);
 
@@ -203,26 +203,25 @@ class JobAssignmentController extends Controller
                     }
                 },
             ],
-            'user_id'      => 'required|exists:users,id',
-            'remarks'      => 'nullable|string',
+            'user_id' => 'required|exists:users,id',
+            'remarks' => 'nullable|string',
         ]);
 
         // Proceed with creation
         $assignment = JobAssignment::create([
-            'job_card_id'       => $validated['job_card_id'],
-            'user_id'           => $validated['user_id'],
-            'remarks'           => $validated['remarks'] ?? null,
-            'assigned_at'       => now(),
-            'stage'             => 'assigned',
-            'position'          => JobAssignment::where('stage', 'assigned')->max('position') + 1,
-            'is_active'         => true,
+            'job_card_id' => $validated['job_card_id'],
+            'user_id' => $validated['user_id'],
+            'remarks' => $validated['remarks'] ?? null,
+            'assigned_at' => now(),
+            'stage' => 'assigned',
+            'position' => JobAssignment::where('stage', 'assigned')->max('position') + 1,
+            'is_active' => true,
             'service_status_id' => 1, // or dynamic
         ]);
 
-        return redirect()
-            ->route('job_assignments.show', $assignment)
-            ->with('success', 'Job assigned successfully!');
+        return redirect()->route('job_assignments.index')->with('success', 'Engineer assigned successfully.');
     }
+
 
     // Service: Engineer updates work (in_progress → completed)
     public function service(JobAssignment $assignment)
@@ -341,11 +340,11 @@ class JobAssignmentController extends Controller
 
         DB::transaction(function () use ($assignment, $otp, $deliverBy) {
             $assignment->update([
-                'current_otp'            => $otp,
-                'delivered_otp'          => $otp,
+                'current_otp' => $otp,
+                'delivered_otp' => $otp,
                 'delivered_confirmed_by' => $deliverBy->name,
-                'stage'                  => 'generate_otp',
-                'position'               => JobAssignment::where('stage', 'generate_otp')->max('position') + 1,
+                'stage' => 'generate_otp',
+                'position' => JobAssignment::where('stage', 'generate_otp')->max('position') + 1,
             ]);
         });
 
@@ -355,7 +354,7 @@ class JobAssignmentController extends Controller
             ->get(['id', 'name']);
 
         return Inertia::render('JobAssignments/Show', [
-            'assignment'  => $assignment->fresh([
+            'assignment' => $assignment->fresh([
                 'jobCard.serviceInward.contact',
                 'user',
                 'status',
@@ -363,17 +362,17 @@ class JobAssignmentController extends Controller
                 'auditor'
             ]),
             'supervisors' => $supervisors,
-            'users'       => User::orderBy('name')->get(['id', 'name']),
-            'can'         => [
-                'update'     => Gate::allows('update', $assignment),
-                'delete'     => Gate::allows('delete', $assignment),
+            'users' => User::orderBy('name')->get(['id', 'name']),
+            'can' => [
+                'update' => Gate::allows('update', $assignment),
+                'delete' => Gate::allows('delete', $assignment),
                 'adminClose' => Gate::allows('adminClose', $assignment),
             ],
         ])->with([
-            'success'         => 'OTP Generated & Sent!',
-            'otp'             => $otp,
+            'success' => 'OTP Generated & Sent!',
+            'otp' => $otp,
             'formattedMobile' => $formattedMobile,
-            'whatsappNumber'  => $whatsappNumber,
+            'whatsappNumber' => $whatsappNumber,
         ]);
     }
 
@@ -394,11 +393,11 @@ class JobAssignmentController extends Controller
 
         DB::transaction(function () use ($assignment) {
             $assignment->update([
-                'stage'                  => 'delivered',
+                'stage' => 'delivered',
                 'delivered_confirmed_at' => now(),
                 'delivered_confirmed_by' => auth()->user()->name,
-                'current_otp'            => null,
-                'position'               => JobAssignment::where('stage', 'delivered')->max('position') + 1,
+                'current_otp' => null,
+                'position' => JobAssignment::where('stage', 'delivered')->max('position') + 1,
             ]);
         });
 
@@ -406,7 +405,6 @@ class JobAssignmentController extends Controller
             ->route('job_assignments.show', $assignment)
             ->with('success', 'Delivery confirmed! Job is now Delivered.');
     }
-
 
 
     // Admin Close: Final verification and close
