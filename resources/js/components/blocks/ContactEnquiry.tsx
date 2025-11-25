@@ -6,6 +6,21 @@ import { useRoute } from 'ziggy-js';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 
 interface Contact {
     id: number;
@@ -27,13 +42,12 @@ interface ContactEnquiryProps {
 }
 
 export default function ContactEnquiry({
-                                                value,
-                                                onSelect,
-                                                placeholder = 'Search contacts...',
-                                                className = '',
-                                                onCreateNew,
-                                                label
-                                            }: ContactEnquiryProps) {
+                                           value,
+                                           onSelect,
+                                           placeholder = 'Search contacts...',
+                                           className = '',
+                                           label,
+                                       }: ContactEnquiryProps) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<Contact[]>([]);
     const [loading, setLoading] = useState(false);
@@ -41,15 +55,26 @@ export default function ContactEnquiry({
     const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
     const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
 
+    // Create dialog state
+    const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [newContact, setNewContact] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        mobile: '',
+        company: '',
+        contact_type_id: '',
+    });
+
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null); // New: reference to parent container
+    const containerRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<(HTMLLIElement | null)[]>([]);
     const route = useRoute();
     const abortControllerRef = useRef<AbortController | null>(null);
     const lastQueryRef = useRef<string>('');
 
-    // === Sync external value (controlled mode) ===
+    // Sync external value
     useEffect(() => {
         if (value) {
             setSelectedContact(value);
@@ -62,12 +87,13 @@ export default function ContactEnquiry({
         }
     }, [value]);
 
-    // === Click outside to close ===
+    // Click outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (
                 dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
-                inputRef.current && !inputRef.current.contains(event.target as Node)
+                inputRef.current && !inputRef.current.contains(event.target as Node) &&
+                containerRef.current && !containerRef.current.contains(event.target as Node)
             ) {
                 setShowDropdown(false);
                 setHighlightedIndex(-1);
@@ -77,7 +103,7 @@ export default function ContactEnquiry({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // === Keyboard navigation ===
+    // Keyboard navigation
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!showDropdown || selectedContact) return;
@@ -96,10 +122,10 @@ export default function ContactEnquiry({
                 case 'Enter':
                     e.preventDefault();
                     if (highlightedIndex >= 0) {
-                        if (results.length > 0 && highlightedIndex < results.length) {
+                        if (highlightedIndex < results.length) {
                             handleSelect(results[highlightedIndex]);
-                        } else if (query.length >= 2 && results.length === 0 && highlightedIndex === 0) {
-                            handleCreateNew();
+                        } else if (query.length >= 2 && results.length === 0) {
+                            handleOpenCreateDialog();
                         }
                     }
                     break;
@@ -107,7 +133,6 @@ export default function ContactEnquiry({
                     e.preventDefault();
                     setShowDropdown(false);
                     setHighlightedIndex(-1);
-                    inputRef.current?.focus();
                     break;
             }
         };
@@ -118,21 +143,17 @@ export default function ContactEnquiry({
         }
     }, [showDropdown, results, highlightedIndex, query, selectedContact]);
 
-    // === Scroll highlighted into view ===
+    // Scroll highlighted into view
     useEffect(() => {
         const el = itemRefs.current[highlightedIndex];
         el?.scrollIntoView({ block: 'nearest' });
     }, [highlightedIndex]);
 
-    // === Cancel previous request ===
     const cancelPreviousRequest = useCallback(() => {
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-            abortControllerRef.current = null;
-        }
+        abortControllerRef.current?.abort();
+        abortControllerRef.current = null;
     }, []);
 
-    // === Debounced search (only when not selected) ===
     const triggerSearch = useCallback((search: string) => {
         if (search === lastQueryRef.current || selectedContact) return;
         lastQueryRef.current = search;
@@ -148,15 +169,12 @@ export default function ContactEnquiry({
 
         const controller = new AbortController();
         abortControllerRef.current = controller;
-
         setLoading(true);
         fetchContacts(search, controller.signal);
     }, [selectedContact, cancelPreviousRequest]);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            triggerSearch(query);
-        }, 150);
+        const timer = setTimeout(() => triggerSearch(query), 150);
         return () => clearTimeout(timer);
     }, [query, triggerSearch]);
 
@@ -187,15 +205,11 @@ export default function ContactEnquiry({
                 setShowDropdown(true);
             }
         } finally {
-            if (abortControllerRef.current?.signal === signal) {
-                setLoading(false);
-            }
+            if (abortControllerRef.current?.signal === signal) setLoading(false);
         }
     };
 
     const handleSelect = useCallback((contact: Contact) => {
-        cancelPreviousRequest();
-        lastQueryRef.current = '';
         setSelectedContact(contact);
         setQuery(contact.name);
         setResults([]);
@@ -204,22 +218,9 @@ export default function ContactEnquiry({
         setLoading(false);
         onSelect(contact);
         inputRef.current?.blur();
-    }, [onSelect, cancelPreviousRequest]);
-
-    const handleCreateNew = useCallback(() => {
-        cancelPreviousRequest();
-        lastQueryRef.current = '';
-        if (onCreateNew && query.trim()) {
-            onCreateNew(query.trim());
-        }
-        setShowDropdown(false);
-        setHighlightedIndex(-1);
-        inputRef.current?.blur();
-    }, [onCreateNew, query, cancelPreviousRequest]);
+    }, [onSelect]);
 
     const handleClear = useCallback(() => {
-        cancelPreviousRequest();
-        lastQueryRef.current = '';
         setSelectedContact(null);
         setQuery('');
         setResults([]);
@@ -227,159 +228,251 @@ export default function ContactEnquiry({
         setLoading(false);
         onSelect(null);
         inputRef.current?.focus();
-    }, [onSelect, cancelPreviousRequest]);
+    }, [onSelect]);
+
+    const handleOpenCreateDialog = useCallback(() => {
+        setNewContact(prev => ({ ...prev, name: query.trim() }));
+        setCreateDialogOpen(true);
+        setShowDropdown(false);
+        setHighlightedIndex(-1);
+    }, [query]);
+
+    const handleCreateContact = async () => {
+
+        // Replace with your actual API endpoint
+        const response = await fetch(route('contacts.store'), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            },
+            body: JSON.stringify(newContact),
+        });
+
+        if (response.ok) {
+            const created = await response.json();
+            handleSelect(created.contact); // assuming response has the created contact
+            setCreateDialogOpen(false);
+        }
+    };
 
     const displayValue = selectedContact ? selectedContact.name : query;
     const showCreateButton = query.length >= 2 && results.length === 0 && !loading && !selectedContact;
 
     return (
-        <div className={cn('w-full flex space-y-2', className)}>
+        <>
+            <div className={cn('w-full flex flex-col space-y-2', className)}>
+                {label && <Label htmlFor="contact-autocomplete">{label}</Label>}
 
-            {/* Fixed container with position context */}
-            <div ref={containerRef} className="relative h-12 w-full">
-                <Input
-                    id="contact-autocomplete"
-                    ref={inputRef}
-                    type="text"
-                    value={displayValue}
-                    onChange={(e) => {
-                        const val = e.target.value;
-                        setQuery(val);
-                        if (selectedContact) {
-                            setSelectedContact(null);
-                            onSelect(null);
-                        }
-                    }}
-                    onFocus={() => {
-                        if (!selectedContact && query.length >= 2 && (results.length > 0 || showCreateButton)) {
-                            setShowDropdown(true);
-                        }
-                    }}
-                    onKeyDown={(e) => {
-                        if (e.key === 'ArrowDown' && !selectedContact) {
-                            e.preventDefault();
-                            setShowDropdown(true);
-                            setHighlightedIndex(0);
-                        }
-                    }}
-                    placeholder={placeholder}
-                    className="flex transition-none h-12 text-2xl font-extrabold tracking-widest w-full"
-                />
+                <div ref={containerRef} className="relative">
+                    <Input
+                        id="contact-autocomplete"
+                        ref={inputRef}
+                        type="text"
+                        value={displayValue}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setQuery(val);
+                            if (selectedContact) {
+                                setSelectedContact(null);
+                                onSelect(null);
+                            }
+                        }}
+                        onFocus={() => {
+                            if (!selectedContact && query.length >= 2 && (results.length > 0 || showCreateButton)) {
+                                setShowDropdown(true);
+                            }
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'ArrowDown' && !selectedContact) {
+                                e.preventDefault();
+                                setShowDropdown(true);
+                                setHighlightedIndex(0);
+                            }
+                        }}
+                        placeholder={placeholder}
+                        className="h-12 text-2xl font-extrabold tracking-widest w-full pr-12"
+                    />
 
-                {/* Icons */}
-                {loading && (
-                    <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    </div>
-                )}
+                    {/* Icons */}
+                    {loading && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
+                    )}
 
-                {!loading && selectedContact && (
-                    <button
-                        type="button"
-                        onClick={handleClear}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label="Clear"
-                    >
-                        <X className="h-4 w-4" />
-                    </button>
-                )}
+                    {!loading && selectedContact && (
+                        <button
+                            type="button"
+                            onClick={handleClear}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    )}
 
-                {!loading && !selectedContact && (
-                    <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors">
-                        {showDropdown ? <ChevronDown className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-                    </div>
-                )}
+                    {!loading && !selectedContact && (
+                        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                            {showDropdown ? <ChevronDown className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+                        </div>
+                    )}
 
-                {/* Dropdown: Positioned relative to container */}
-                {showDropdown && (
-                    <div
-                        ref={dropdownRef}
-                        className={cn(
-                            'absolute left-0 right-0 top-full mt-1 z-50',
-                            'w-full max-w-md rounded-md border bg-popover text-popover-foreground shadow-lg',
-                            'max-h-60 overflow-auto p-1 transition-opacity duration-100'
-                        )}
-                    >
-                        {results.length > 0 ? (
-                            <ul className="space-y-1">
-                                {results.map((contact, idx) => (
-                                    <li
-                                        key={contact.id}
-                                        ref={(el) => {
-                                            itemRefs.current[idx] = el;
-                                        }}
-                                        onClick={() => handleSelect(contact)}
-                                        onMouseEnter={() => setHighlightedIndex(idx)}
-                                        className={cn(
-                                            'relative cursor-pointer select-none rounded-sm px-3 py-2 text-sm outline-none transition-colors duration-75',
-                                            highlightedIndex === idx
-                                                ? 'bg-accent text-accent-foreground'
-                                                : 'hover:bg-accent hover:text-accent-foreground'
-                                        )}
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium truncate">{contact.name}</span>
-                                                    <span className="text-xs font-medium text-muted-foreground flex-shrink-0">
-                                                        {contact.contact_type.name}
-                                                    </span>
+                    {/* Dropdown */}
+                    {showDropdown && (
+                        <div
+                            ref={dropdownRef}
+                            className="absolute left-0 right-0 top-full mt-1 z-50 w-full max-w-2xl rounded-md border bg-popover text-popover-foreground shadow-lg max-h-96 overflow-auto"
+                        >
+                            {results.length > 0 ? (
+                                <ul className="py-1">
+                                    {results.map((contact, idx) => (
+                                        <li
+                                            key={contact.id}
+                                            ref={el => (itemRefs.current[idx] = el)}
+                                            onClick={() => handleSelect(contact)}
+                                            onMouseEnter={() => setHighlightedIndex(idx)}
+                                            className={cn(
+                                                'px-4 py-3 cursor-pointer hover:bg-accent hover:text-accent-foreground',
+                                                highlightedIndex === idx && 'bg-accent text-accent-foreground'
+                                            )}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <div className="font-medium">{contact.name}</div>
+                                                    <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-4">
+                                                        {contact.mobile && (
+                                                            <span className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                                                {contact.mobile}
+                              </span>
+                                                        )}
+                                                        {contact.email && (
+                                                            <span className="flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                                                {contact.email}
+                              </span>
+                                                        )}
+                                                        {contact.company && (
+                                                            <span className="flex items-center gap-1">
+                                <Building className="h-3 w-3" />
+                                                                {contact.company}
+                              </span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                                                    {contact.mobile && (
-                                                        <div className="flex items-center gap-1 flex-shrink-0">
-                                                            <Phone className="h-3 w-3" />
-                                                            <span className="truncate">{contact.mobile}</span>
-                                                        </div>
-                                                    )}
-                                                    {contact.email && (
-                                                        <div className="flex items-center gap-1 flex-shrink-0">
-                                                            <Mail className="h-3 w-3" />
-                                                            <span className="truncate">{contact.email}</span>
-                                                        </div>
-                                                    )}
-                                                    {contact.company && (
-                                                        <div className="flex items-center gap-1 flex-shrink-0">
-                                                            <Building className="h-3 w-3" />
-                                                            <span className="truncate">{contact.company}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <span className="text-xs text-muted-foreground">
+                          {contact.contact_type.name}
+                        </span>
                                             </div>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : null}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : null}
 
-                        {/* Create New Button */}
-                        {showCreateButton && (
-                            <div className="border-t border-border pt-2 mt-2">
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className={cn(
-                                        'w-full justify-start text-sm transition-colors duration-75',
-                                        highlightedIndex === results.length && 'bg-accent text-accent-foreground'
-                                    )}
-                                    onClick={handleCreateNew}
-                                    onMouseEnter={() => setHighlightedIndex(results.length)}
-                                >
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Create new contact: <span className="ml-1 font-medium">"{query}"</span>
-                                </Button>
-                            </div>
-                        )}
+                            {showCreateButton && (
+                                <div className="border-t pt-2">
+                                    <Button
+                                        variant="ghost"
+                                        className={cn(
+                                            'w-full justify-start',
+                                            highlightedIndex === results.length && 'bg-accent text-accent-foreground'
+                                        )}
+                                        onClick={handleOpenCreateDialog}
+                                        onMouseEnter={() => setHighlightedIndex(results.length)}
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Create new contact: <span className="ml-1 font-medium">"{query}"</span>
+                                    </Button>
+                                </div>
+                            )}
 
-                        {/* Empty State */}
-                        {!showCreateButton && results.length === 0 && query.length >= 2 && (
-                            <div className="px-3 py-2 text-center text-sm text-muted-foreground">
-                                No contacts found
-                            </div>
-                        )}
-                    </div>
-                )}
+                            {!showCreateButton && results.length === 0 && query.length >= 2 && (
+                                <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                                    No contacts found
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+
+            {/* Create New Contact Dialog */}
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Create New Contact</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label>Name *</Label>
+                            <Input
+                                value={newContact.name}
+                                onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                                placeholder="John Doe"
+                            />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Email</Label>
+                            <Input
+                                type="email"
+                                value={newContact.email}
+                                onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                                placeholder="john@example.com"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label>Phone</Label>
+                                <Input
+                                    value={newContact.phone}
+                                    onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Mobile *</Label>
+                                <Input
+                                    value={newContact.mobile}
+                                    onChange={(e) => setNewContact({ ...newContact, mobile: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Company</Label>
+                            <Input
+                                value={newContact.company}
+                                onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Contact Type</Label>
+                            <Select
+                                value={newContact.contact_type_id}
+                                onValueChange={(value) => setNewContact({ ...newContact, contact_type_id: value })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">Customer</SelectItem>
+                                    <SelectItem value="2">Supplier</SelectItem>
+                                    <SelectItem value="3">Partner</SelectItem>
+                                    <SelectItem value="4">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleCreateContact}>Create Contact</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }

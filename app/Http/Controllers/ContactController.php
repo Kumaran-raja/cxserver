@@ -78,6 +78,8 @@ class ContactController extends Controller
     {
         $this->authorize('create', Contact::class);
 
+        dd($request->all());
+
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'mobile' => 'required|string|unique:contacts,mobile',
