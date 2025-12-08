@@ -21,6 +21,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { router } from '@inertiajs/react';
+import { Switch } from '../ui/switch';
 
 interface Contact {
     id: number;
@@ -59,12 +61,15 @@ export default function ContactEnquiry({
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [newContact, setNewContact] = useState({
         name: '',
+        mobile: '',
         email: '',
         phone: '',
-        mobile: '',
         company: '',
         contact_type_id: '',
+        has_web_access: false,
+        active: true,
     });
+
 
     const inputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -237,23 +242,21 @@ export default function ContactEnquiry({
         setHighlightedIndex(-1);
     }, [query]);
 
-    const handleCreateContact = async () => {
+    const handleCreateContact = () => {
+        router.post(route('contacts.store'), newContact, {
+            onSuccess: (page: any) => {
+                const created = page.props?.contact;
 
-        // Replace with your actual API endpoint
-        const response = await fetch(route('contacts.store'), {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                if (created) {
+                    handleSelect(created);
+                }
+
+                setCreateDialogOpen(false);
             },
-            body: JSON.stringify(newContact),
+            onError: (err) => {
+                console.error(err);
+            },
         });
-
-        if (response.ok) {
-            const created = await response.json();
-            handleSelect(created.contact); // assuming response has the created contact
-            setCreateDialogOpen(false);
-        }
     };
 
     const displayValue = selectedContact ? selectedContact.name : query;
@@ -463,6 +466,26 @@ export default function ContactEnquiry({
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="flex items-center space-x-6 pt-4">
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    checked={newContact.active}
+                                    onCheckedChange={(v) => setNewContact({ ...newContact, active: v })}
+                                />
+                                <Label>Active</Label>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    checked={newContact.has_web_access}
+                                    onCheckedChange={(v) =>
+                                        setNewContact({ ...newContact, has_web_access: v })
+                                    }
+                                />
+                                <Label>Web Access</Label>
+                            </div>
+                        </div>
+
                     </div>
 
                     <DialogFooter>

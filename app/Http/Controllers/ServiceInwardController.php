@@ -357,4 +357,15 @@ class ServiceInwardController extends Controller
         return response()->json(['inwards' => $inwards]);
     }
 
+    public function byContact(Contact $contact)
+    {
+        $inwards = ServiceInward::with(['contact', 'receiver'])
+            ->where('contact_id', $contact->id)
+            ->latest()
+            ->get();
+
+        return response()->json($inwards);
+    }
+
+
 }
