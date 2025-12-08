@@ -61,6 +61,12 @@ export default function Index() {
         filters: serverFilters,
         can,
     } = usePage().props as unknown as EnquiryPageProps;
+    const [jobCards, setJobCards] = useState<any[]>([]);
+
+    const [inwards, setInwards] = useState<any[]>([]);
+    const [loadingInwards, setLoadingInwards] = useState(false);
+    const [loadingJobCards, setLoadingJobCards] = useState(false);
+
     const route = useRoute();
     const [localFilters, setLocalFilters] = useState({
         contact_id: serverFilters.search || '',
@@ -118,6 +124,38 @@ export default function Index() {
         // Replace with your own “open create modal / redirect” logic
         alert(`Create new contact: "${name}"`);
     };
+    const handleGetDetails = async () => {
+        if (!selectedContact) return;
+
+        // start both loaders
+        setLoadingInwards(true);
+        setLoadingJobCards(true);
+
+        try {
+            // Inward fetch
+            const res1 = await fetch(
+                route('service_inwards.by_contact', selectedContact.id)
+            );
+            const inwardsData = await res1.json();
+            setInwards(inwardsData);
+
+            // Job Card fetch
+            const res2 = await fetch(
+                route('job_cards.by_contact', selectedContact.id)
+            );
+            const jobData = await res2.json();
+            setJobCards(jobData);
+
+        } catch (err) {
+            console.error(err);
+        } finally {
+            // stop both loaders
+            setLoadingInwards(false);
+            setLoadingJobCards(false);
+        }
+    };
+
+
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -148,8 +186,8 @@ export default function Index() {
 
                         <div className="flex gap-3">
                             {can.create && (
-                                <Button onClick={() => setShowCreate(true)}>
-                                    <Plus className="mr-2 h-4 w-4" /> New Todo
+                                <Button onClick={handleGetDetails}>
+                                     Get Details
                                 </Button>
                             )}
                         </div>
@@ -158,6 +196,145 @@ export default function Index() {
                     {/* Mega Search Bar */}
 
                     <Separator />
+                    {/* Main Layout (After Separator) */}
+                    <div className="mt-6 flex flex-col lg:flex-row gap-6">
+
+                        {/* LEFT CONTENT → 70% */}
+                        <div className="w-full lg:w-[70%] space-y-10">
+
+                            {/* ================= INWARDS ================= */}
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-700 mb-4">
+                                    Service Inwards
+                                </h2>
+
+                                {!loadingInwards && inwards.length === 0 && (
+                                    <div className="text-center py-10 text-sm text-gray-400 bg-white rounded-xl border">
+                                        No service records found
+                                    </div>
+                                )}
+
+                                <div className="space-y-3">
+                                    {inwards.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="w-full rounded-xl border bg-white px-4 py-3 shadow-sm hover:shadow-md transition-all"
+                                        >
+                                            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+
+                                                {/* RMA */}
+                                                <div className="font-semibold text-gray-800 min-w-[120px]">
+                                                    {item.rma}
+                                                </div>
+
+                                                {/* Contact */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">Contact:</span>{' '}
+                                                    {item.contact?.name ?? '-'}
+                                                </div>
+                                                {/* Material */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">Material:</span>{' '}
+                                                    {item.material_type}
+                                                </div>
+
+                                                {/* Serial */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">Serial:</span>{' '}
+                                                    {item.serial_no ?? 'N/A'}
+                                                </div>
+
+
+
+                                                {/* Receiver */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">By:</span>{' '}
+                                                    {item.receiver?.name ?? 'N/A'}
+                                                </div>
+
+                                                {/* Date */}
+                                                <div className="text-xs text-gray-400">
+                                                    {item.received_date}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* ================= JOB CARDS ================= */}
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-700 mb-4">
+                                    Job Cards
+                                </h2>
+
+                                {!loadingJobCards && jobCards.length === 0 && (
+                                    <div className="text-center py-10 text-sm text-gray-400 bg-white rounded-xl border">
+                                        No job cards found
+                                    </div>
+                                )}
+
+                                <div className="space-y-3">
+                                    {jobCards.map((job) => (
+                                        <div
+                                            key={job.id}
+                                            className="w-full rounded-xl border bg-white px-4 py-3 shadow-sm hover:shadow-md transition-all"
+                                        >
+                                            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+
+                                                {/* Job No */}
+                                                <div className="font-semibold text-gray-800 min-w-[120px]">
+                                                    {job.job_no}
+                                                </div>
+
+                                                {/* RMA */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">RMA:</span>{' '}
+                                                    {job.service_inward?.rma ?? '-'}
+                                                </div>
+
+                                                {/* Status */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">Status:</span>{' '}
+                                                    {job.status?.name ?? '-'}
+                                                </div>
+
+                                                {/* Technician */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">Tech:</span>{' '}
+                                                    {job.user?.name ?? '-'}
+                                                </div>
+
+                                                {/* Date */}
+                                                <div className="text-xs text-gray-400">
+                                                    {job.received_at}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+
+                        {/* RIGHT PANEL → 30% (Sticky Chat Placeholder) */}
+                        <div className="w-full lg:w-[30%]">
+                            <div className="lg:sticky lg:top-24 space-y-4">
+
+                                <div className="bg-white border rounded-xl p-4 min-h-[300px] shadow-sm">
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                                        Customer Chat (Coming Soon)
+                                    </h3>
+
+                                    <div className="text-xs text-gray-400">
+                                        This panel is reserved for chat / notes / timeline.
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </AppLayout>

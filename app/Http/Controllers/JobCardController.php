@@ -245,4 +245,19 @@ class JobCardController extends Controller
 
         return Inertia::render('JobCards/Trash', ['jobs' => $jobs]);
     }
+
+    public function byContact($contactId)
+    {
+        $jobs = JobCard::where('contact_id', $contactId)
+            ->with([
+                'serviceInward:id,rma',
+                'status:id,name',
+                'user:id,name',
+            ])
+            ->latest('received_at')
+            ->get();
+
+        return response()->json($jobs);
+    }
+
 }

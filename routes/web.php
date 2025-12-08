@@ -457,3 +457,9 @@ Route::post('/messaging/whatsapp/send', [MessagingController::class, 'sendWhatsA
 Route::get('/messaging/chat-history/{contact}', [MessagingController::class, 'getChatHistory'])
     ->name('messaging.chat-history');
 
+Route::get('/service-inwards/by-contact/{contact}', [ServiceInwardController::class, 'byContact'])
+    ->name('service_inwards.by_contact');
+
+Route::get('/job-cards/by-contact/{contact}', [\App\Http\Controllers\JobCardController::class, 'byContact'])
+    ->name('job_cards.by_contact');
+
