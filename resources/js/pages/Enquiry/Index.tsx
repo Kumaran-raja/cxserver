@@ -196,141 +196,142 @@ export default function Index() {
                     {/* Mega Search Bar */}
 
                     <Separator />
-                    <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {/*{loadingInwards  && <p className="text-sm text-muted-foreground">Loading...</p>}*/}
+                    {/* Main Layout (After Separator) */}
+                    <div className="mt-6 flex flex-col lg:flex-row gap-6">
 
-                        {!loadingInwards  && inwards.length === 0 && (
-                            <div className="col-span-full text-center py-10 text-sm text-gray-400">
-                                No service records found for this contact
+                        {/* LEFT CONTENT → 70% */}
+                        <div className="w-full lg:w-[70%] space-y-10">
+
+                            {/* ================= INWARDS ================= */}
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-700 mb-4">
+                                    Service Inwards
+                                </h2>
+
+                                {!loadingInwards && inwards.length === 0 && (
+                                    <div className="text-center py-10 text-sm text-gray-400 bg-white rounded-xl border">
+                                        No service records found
+                                    </div>
+                                )}
+
+                                <div className="space-y-3">
+                                    {inwards.map((item) => (
+                                        <div
+                                            key={item.id}
+                                            className="w-full rounded-xl border bg-white px-4 py-3 shadow-sm hover:shadow-md transition-all"
+                                        >
+                                            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+
+                                                {/* RMA */}
+                                                <div className="font-semibold text-gray-800 min-w-[120px]">
+                                                    {item.rma}
+                                                </div>
+
+                                                {/* Contact */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">Contact:</span>{' '}
+                                                    {item.contact?.name ?? '-'}
+                                                </div>
+                                                {/* Material */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">Material:</span>{' '}
+                                                    {item.material_type}
+                                                </div>
+
+                                                {/* Serial */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">Serial:</span>{' '}
+                                                    {item.serial_no ?? 'N/A'}
+                                                </div>
+
+
+
+                                                {/* Receiver */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">By:</span>{' '}
+                                                    {item.receiver?.name ?? 'N/A'}
+                                                </div>
+
+                                                {/* Date */}
+                                                <div className="text-xs text-gray-400">
+                                                    {item.received_date}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
-                        )}
+                            {/* ================= JOB CARDS ================= */}
+                            <div>
+                                <h2 className="text-lg font-semibold text-gray-700 mb-4">
+                                    Job Cards
+                                </h2>
 
-                        {inwards.map((item) => (
-                            <div
-                                key={item.id}
-                                className="rounded-2xl border bg-white p-5 shadow-sm hover:shadow-md transition-all duration-200"
-                            >
-                                {/* Header */}
-                                <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-lg font-semibold text-gray-800">
-                                        {item.rma}
+                                {!loadingJobCards && jobCards.length === 0 && (
+                                    <div className="text-center py-10 text-sm text-gray-400 bg-white rounded-xl border">
+                                        No job cards found
+                                    </div>
+                                )}
+
+                                <div className="space-y-3">
+                                    {jobCards.map((job) => (
+                                        <div
+                                            key={job.id}
+                                            className="w-full rounded-xl border bg-white px-4 py-3 shadow-sm hover:shadow-md transition-all"
+                                        >
+                                            <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+
+                                                {/* Job No */}
+                                                <div className="font-semibold text-gray-800 min-w-[120px]">
+                                                    {job.job_no}
+                                                </div>
+
+                                                {/* RMA */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">RMA:</span>{' '}
+                                                    {job.service_inward?.rma ?? '-'}
+                                                </div>
+
+                                                {/* Status */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">Status:</span>{' '}
+                                                    {job.status?.name ?? '-'}
+                                                </div>
+
+                                                {/* Technician */}
+                                                <div className="text-gray-600">
+                                                    <span className="text-gray-400">Tech:</span>{' '}
+                                                    {job.user?.name ?? '-'}
+                                                </div>
+
+                                                {/* Date */}
+                                                <div className="text-xs text-gray-400">
+                                                    {job.received_at}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+
+                        {/* RIGHT PANEL → 30% (Sticky Chat Placeholder) */}
+                        <div className="w-full lg:w-[30%]">
+                            <div className="lg:sticky lg:top-24 space-y-4">
+
+                                <div className="bg-white border rounded-xl p-4 min-h-[300px] shadow-sm">
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                                        Customer Chat (Coming Soon)
                                     </h3>
-                                    <span className="px-2.5 py-1 text-xs font-medium bg-blue-50 text-blue-600 rounded-full">
-                Inward
-            </span>
-                                </div>
 
-                                {/* Body Info */}
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">Material</span>
-                                        <span className="font-medium text-gray-800">
-                    {item.material_type}
-                </span>
-                                    </div>
-
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">Serial No</span>
-                                        <span className="font-medium text-gray-800">
-                    {item.serial_no ?? 'N/A'}
-                </span>
-                                    </div>
-
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">Contact</span>
-                                        <span className="font-medium text-gray-800">
-                    {item.contact?.name ?? '-'}
-                </span>
-                                    </div>
-
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-500">Received by</span>
-                                        <span className="font-medium text-gray-800">
-                    {item.receiver?.name ?? 'N/A'}
-                </span>
+                                    <div className="text-xs text-gray-400">
+                                        This panel is reserved for chat / notes / timeline.
                                     </div>
                                 </div>
 
-                                {/* Footer */}
-                                <div className="mt-4 flex items-center justify-between border-t pt-3">
-            <span className="text-xs text-gray-400">
-                {item.received_date}
-            </span>
-
-                                    {/*<button className="text-xs font-medium text-blue-600 hover:underline">*/}
-                                    {/*    View Details*/}
-                                    {/*</button>*/}
-                                </div>
                             </div>
-                        ))}
-
-                    </div>
-                    {/* Job Cards Section */}
-                    <div className="mt-10">
-                        <h2 className="text-lg font-semibold text-gray-700 mb-4">
-                            Job Cards
-                        </h2>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {!loadingJobCards && jobCards.length === 0 && (
-                                <p className="text-sm text-gray-500">
-                                    No job cards found
-                                </p>
-                            )}
-
-                            {jobCards.map((job) => (
-                                <div
-                                    key={job.id}
-                                    className="rounded-2xl border bg-white p-5 shadow-sm hover:shadow-md transition-all duration-200"
-                                >
-                                    {/* Header */}
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="text-lg font-semibold text-gray-800">
-                                            {job.job_no}
-                                        </h3>
-                                        <span className="px-2.5 py-1 text-xs font-medium bg-green-50 text-green-600 rounded-full">
-                Job Card
-            </span>
-                                    </div>
-
-                                    {/* Body */}
-                                    <div className="space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">RMA</span>
-                                            <span className="font-medium text-gray-800">
-                    {job.service_inward?.rma ?? '-'}
-                </span>
-                                        </div>
-
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Status</span>
-                                            <span className="font-medium text-gray-800">
-                    {job.status?.name ?? '-'}
-                </span>
-                                        </div>
-
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Technician</span>
-                                            <span className="font-medium text-gray-800">
-                    {job.user?.name ?? '-'}
-                </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Footer */}
-                                    <div className="mt-4 flex items-center justify-between border-t pt-3">
-            <span className="text-xs text-gray-400">
-                {job.received_at}
-            </span>
-
-                                        <button className="text-xs font-medium text-green-600 hover:underline">
-                                            View Details
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-
                         </div>
                     </div>
 
