@@ -94,7 +94,7 @@ export default function Index() {
         (extra = {}) => {
             setIsNavigating(true);
             router.get(
-                route('enquiry.index'),
+                route('enquiries.index'),
                 { ...buildPayload(), ...extra },
                 {
                     preserveState: true,
