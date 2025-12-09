@@ -140,7 +140,7 @@ export default function Index() {
                 preserveState: true,
                 onSuccess: (page) => {
                     const createdId =
-                        (page.props as any)?.created_id ?? null;
+                        (page.props as any)?.flash?.created_id ?? null;
 
                     if (createdId) {
                         setContactEnquiryId(createdId);
