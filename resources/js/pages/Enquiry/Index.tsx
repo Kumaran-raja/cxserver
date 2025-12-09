@@ -11,7 +11,6 @@ import { dashboard } from '@/routes';
 import { index as enquiry } from '@/routes/enquiries/index';
 import type { BreadcrumbItem } from '@/types';
 import { Contact } from '@/types/contact';
-import { Plus } from 'lucide-react';
 
 interface CallLog {
     id: number;
@@ -124,38 +123,81 @@ export default function Index() {
         // Replace with your own “open create modal / redirect” logic
         alert(`Create new contact: "${name}"`);
     };
-    const handleGetDetails = async () => {
+    const [contactEnquiryId, setContactEnquiryId] = useState<number | null>(null);
+
+    const handleGetDetails = () => {
         if (!selectedContact) return;
 
-        // start both loaders
         setLoadingInwards(true);
         setLoadingJobCards(true);
 
-        try {
-            // Inward fetch
-            const res1 = await fetch(
-                route('service_inwards.by_contact', selectedContact.id)
-            );
-            const inwardsData = await res1.json();
-            setInwards(inwardsData);
+        // ✅ Create CallLog using Inertia POST (CSRF safe)
+        router.post(route('calls.quickStore'),
+            {
+                contact_id: selectedContact.id,
+            },
+            {
+                preserveState: true,
+                onSuccess: (page) => {
+                    const createdId =
+                        (page.props as any)?.created_id ?? null;
 
-            // Job Card fetch
-            const res2 = await fetch(
-                route('job_cards.by_contact', selectedContact.id)
-            );
-            const jobData = await res2.json();
-            setJobCards(jobData);
+                    if (createdId) {
+                        setContactEnquiryId(createdId);
+                    }
+                },
+                onFinish: async () => {
+                    try {
+                        // ✅ Fetch Service Inwards
+                        const res1 = await fetch(
+                            route('service_inwards.by_contact', selectedContact.id),
+                            { credentials: 'same-origin' }
+                        );
+                        const inwardsData = await res1.json();
+                        setInwards(inwardsData);
 
-        } catch (err) {
-            console.error(err);
-        } finally {
-            // stop both loaders
-            setLoadingInwards(false);
-            setLoadingJobCards(false);
-        }
+                        // ✅ Fetch Job Cards
+                        const res2 = await fetch(
+                            route('job_cards.by_contact', selectedContact.id),
+                            { credentials: 'same-origin' }
+                        );
+                        const jobData = await res2.json();
+                        setJobCards(jobData);
+
+                    } catch (err) {
+                        console.error(err);
+                    } finally {
+                        setLoadingInwards(false);
+                        setLoadingJobCards(false);
+                    }
+                },
+            }
+        );
     };
 
+    const [message, setMessage] = useState('');
+    const [sending, setSending] = useState(false);
 
+    const handleSendMessage = () => {
+        if (!contactEnquiryId || !message.trim()) return;
+
+        setSending(true);
+
+        router.post(
+            route('calls.updateEnquiry'),
+            {
+                id: contactEnquiryId,
+                enquiry: message,
+            },
+            {
+                preserveState: true,
+                onSuccess: () => {
+                    setMessage('');
+                },
+                onFinish: () => setSending(false),
+            }
+        );
+    };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -320,19 +362,48 @@ export default function Index() {
                         {/* RIGHT PANEL → 30% (Sticky Chat Placeholder) */}
                         <div className="w-full lg:w-[30%]">
                             <div className="lg:sticky lg:top-24 space-y-4">
+                                <div className="bg-white border rounded-xl p-4 min-h-[300px] shadow-sm flex flex-col">
 
-                                <div className="bg-white border rounded-xl p-4 min-h-[300px] shadow-sm">
                                     <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                                        Customer Chat (Coming Soon)
+                                        Customer Chat
                                     </h3>
 
-                                    <div className="text-xs text-gray-400">
-                                        This panel is reserved for chat / notes / timeline.
+                                    {/* Messages Preview */}
+                                    <div className="flex-1 overflow-y-auto text-sm text-gray-700 mb-3">
+                                        {contactEnquiryId ? (
+                                            <div className="text-xs text-gray-500">
+                                                Linked to CallLog #{contactEnquiryId}
+                                            </div>
+                                        ) : (
+                                            <div className="text-xs text-red-400">
+                                                Select customer & click “Get Details” first.
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
 
+                                    {/* Input Box */}
+                                    <div className="flex gap-2 mt-auto">
+                                        <input
+                                        type="text"
+                                        value={message}
+                                        onChange={(e) => setMessage(e.target.value)}
+                                        placeholder="Type message..."
+                                        className="flex-1 border rounded-lg px-3 py-2 text-sm text-black focus:outline-none focus:ring accent-black"
+                                        />
+
+                                        <button
+                                            onClick={handleSendMessage}
+                                            disabled={sending || !contactEnquiryId}
+                                            className="bg-blue-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg text-sm"
+                                        >
+                                            {sending ? 'Sending...' : 'Send'}
+                                        </button>
+                                    </div>
+
+                                </div>
                             </div>
                         </div>
+
                     </div>
 
                 </div>

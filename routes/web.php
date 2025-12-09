@@ -463,3 +463,8 @@ Route::get('/service-inwards/by-contact/{contact}', [ServiceInwardController::cl
 Route::get('/job-cards/by-contact/{contact}', [\App\Http\Controllers\JobCardController::class, 'byContact'])
     ->name('job_cards.by_contact');
 
+Route::post('/calls/quick-store', [CallLogController::class, 'quickStore'])
+    ->name('calls.quickStore');
+
+Route::post('/calls/update-enquiry', [CallLogController::class, 'updateEnquiry'])
+    ->name('calls.updateEnquiry');
