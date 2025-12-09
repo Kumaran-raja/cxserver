@@ -414,29 +414,20 @@ export default function ContactEnquiry({
                             />
                         </div>
 
-                        <div className="grid gap-2">
-                            <Label>Email</Label>
-                            <Input
-                                type="email"
-                                value={newContact.email}
-                                onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
-                                placeholder="john@example.com"
-                            />
-                        </div>
-
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label>Phone</Label>
-                                <Input
-                                    value={newContact.phone}
-                                    onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
-                                />
-                            </div>
+
                             <div className="grid gap-2">
                                 <Label>Mobile *</Label>
                                 <Input
                                     value={newContact.mobile}
                                     onChange={(e) => setNewContact({ ...newContact, mobile: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Phone</Label>
+                                <Input
+                                    value={newContact.phone}
+                                    onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
                                 />
                             </div>
                         </div>
@@ -446,6 +437,16 @@ export default function ContactEnquiry({
                             <Input
                                 value={newContact.company}
                                 onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Email</Label>
+                            <Input
+                                type="email"
+                                value={newContact.email}
+                                onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                                placeholder="john@example.com"
                             />
                         </div>
 

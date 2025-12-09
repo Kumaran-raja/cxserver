@@ -87,7 +87,7 @@ export default function Create() {
 
                     <form
                         onSubmit={handleSubmit}
-                        className="space-y-8 rounded-lg bg-white p-6 shadow"
+                        className="space-y-8 rounded-lg bg-white text-black p-6 shadow"
                     >
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                             {/* JOB CARD AUTOCOMPLETE */}

@@ -58,8 +58,8 @@ class JobSpareRequestController extends Controller
         $this->authorize('create', JobSpareRequest::class);
 
         $jobCards = JobCard::with('serviceInward.contact')
-            ->whereHas('assignments', fn($q) => $q->whereNull('completed_at'))
             ->get(['id', 'job_no', 'service_inward_id']);
+
 
         $parts = ServicePart::where('current_stock', '>', 0)
             ->orderBy('part_code')

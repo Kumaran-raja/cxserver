@@ -96,7 +96,7 @@ class JobCardController extends Controller
 
         $data = $request->validate([
             'service_inward_id' => 'required|exists:service_inwards,id',
-            'user_id'           => 'required|exists:users,id',           // Assigned technician
+            'user_id'           => 'required|exists:users,id',
             'service_status_id' => 'required|exists:service_statuses,id',
             'diagnosis'         => 'nullable|string',
             'estimated_cost'    => 'nullable|numeric|min:0',
@@ -105,22 +105,23 @@ class JobCardController extends Controller
             'spares_applied'    => 'nullable|string|max:255',
         ]);
 
-        // Auto-generate job_no
-        $nextId = JobCard::withTrashed()->max('id') + 1;
+        // ✅ Safe job number generation
+        $lastId = JobCard::withTrashed()->max('id') ?? 0;
+        $nextId = $lastId + 1;
         $data['job_no'] = 'JOB-' . str_pad($nextId, 6, '0', STR_PAD_LEFT);
 
-        $data['service_status_id'] = '1';
-        // Who entered the job card
+        // ✅ Save creator
         $data['entry_by'] = auth()->id();
 
-        // Copy contact from inward
+        // ✅ Copy contact from inward
         $inward = ServiceInward::findOrFail($data['service_inward_id']);
         $data['contact_id'] = $inward->contact_id;
         $data['received_at'] = now();
 
-        $job = JobCard::create($data);
+        // ✅ Create record
+        JobCard::create($data);
 
-        // Mark inward as used
+        // ✅ Mark inward as used (optional)
         $inward->update(['job_created' => true]);
 
         return redirect()->route('job_cards.index')

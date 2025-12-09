@@ -77,27 +77,28 @@ class ServicePartController extends Controller
     {
         $this->authorize('create', ServicePart::class);
 
-        $data = $request->validate([
-            'part_code'     => 'required|string|unique:service_parts,part_code',
-            'name'          => 'required|string|max:255',
-            'brand'         => 'nullable|string|max:255',
-            'model'         => 'nullable|string|max:255',
-            'unit_price'    => 'required|numeric|min:0',
-            'current_stock' => 'required|integer|min:0',
-            'remarks'       => 'nullable|string',
-            'barcode'       => 'nullable|string|unique:service_parts,barcode',
-            'images.*'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
-        ]);
+        try {
+            $data = $request->validate([
+                'part_code'     => 'required|string|unique:service_parts,part_code',
+                'name'          => 'required|string|max:255',
+                'brand'         => 'nullable|string|max:255',
+                'model'         => 'nullable|string|max:255',
+                'unit_price'    => 'required|numeric|min:0',
+                'current_stock' => 'required|integer|min:0',
+                'remarks'       => 'nullable|string',
+                'barcode'       => 'nullable|string|unique:service_parts,barcode',
+                'images.*'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            dd($e->errors());
+        }
 
         $part = ServicePart::create($data);
-
-        if ($request->hasFile('images')) {
-            app(ServicePartImageController::class)->store($request, $part);
-        }
 
         return redirect()->route('service_parts.index')
             ->with('success', 'Part created.');
     }
+
 
     public function edit(ServicePart $servicePart)
     {
