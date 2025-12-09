@@ -67,7 +67,7 @@ export default function Create() {
                         </div>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
+                    <form onSubmit={handleSubmit} className="space-y-6 bg-white text-black p-6 rounded-lg shadow">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                             <div>

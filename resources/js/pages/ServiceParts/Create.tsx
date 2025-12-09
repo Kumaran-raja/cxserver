@@ -79,7 +79,7 @@ export default function Create() {
                         <h1 className="text-2xl font-bold">Add New Part</h1>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-8 bg-white p-6 rounded-lg shadow">
+                    <form onSubmit={handleSubmit} className="space-y-8 bg-white text-black p-6 rounded-lg shadow">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <Label htmlFor="part_code">Part Code *</Label>
@@ -106,7 +106,14 @@ export default function Create() {
                             </div>
                             <div>
                                 <Label htmlFor="current_stock">Current Stock *</Label>
-                                <Input id="current_stock" type="number" min="0" value={data.current_stock} onChange={e => setData('current_stock', e.target.value)} />
+                                <Input
+                                    id="current_stock"
+                                    type="number"
+                                    min="0"
+                                    value={data.current_stock}
+                                    onChange={e => setData('current_stock', Number(e.target.value).toString())}
+                                />
+
                                 {errors.current_stock && <p className="mt-1 text-sm text-red-600">{errors.current_stock}</p>}
                             </div>
                             <div>

@@ -176,7 +176,7 @@ export default function Edit({ part }: Props) {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-8 bg-white p-6 rounded-lg shadow">
+                    <form onSubmit={handleSubmit} className="space-y-8 bg-white text-black p-6 rounded-lg shadow">
                         {/* Fields */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>

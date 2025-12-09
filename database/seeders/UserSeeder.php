@@ -26,6 +26,7 @@ class UserSeeder extends Seeder
             ['Sriram',           'sriram@techmedia.in',     'Password1',   ['user']],
 
             ['Sriram',           'sriram@techmedia.in',     'Password1',   ['user']],
+            ['Kumaran',           'kumaran@gmail.in',     'pass1234',   ['super-admin']],
 
 //            ['Dealer',           'dealer@dealer.com',     'Password1',   ['dealer']],
 //            ['DevOps',           'devops@codexsun.com',   'DevOps123!',  ['devops']],
