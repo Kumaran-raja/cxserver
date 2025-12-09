@@ -210,4 +210,40 @@ class CallLogController extends Controller
             'history' => $history
         ]);
     }
+
+    public function quickStore(Request $request)
+    {
+        $request->validate([
+            'contact_id' => 'required|exists:contacts,id',
+        ]);
+
+        $callLog = CallLog::create([
+            'contact_id' => $request->contact_id,
+            'mobile'     => Contact::find($request->contact_id)->mobile ?? '',
+            'call_type'  => 'incoming',
+            'enquiry'    => null,
+            'user_id'    => auth()->id(),
+        ]);
+
+        return back()->with([
+            'created_id' => $callLog->id,
+        ]);
+    }
+
+
+    public function updateEnquiry(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|exists:call_logs,id',
+            'enquiry' => 'required|string',
+        ]);
+
+        $call = CallLog::find($request->id);
+        $call->enquiry = $request->enquiry;
+        $call->save();
+
+        return back(); // ✅ Important: Inertia expects this
+    }
+
+
 }
