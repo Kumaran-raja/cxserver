@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
             ContactTypeSeeder::class,
 //            ContactSeeder::class,
 //            ServiceInwardSeeder::class,
-//            ServiceStatusSeeder::class,
+            ServiceStatusSeeder::class,
 //            JobCardSeeder::class,
         ]);
     }
