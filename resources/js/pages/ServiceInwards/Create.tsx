@@ -35,6 +35,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import TextEditor from '@/components/ui/text-editor';
 
 interface UserOption {
     id: number;
@@ -339,7 +340,9 @@ export default function Create() {
                                 placeholder="Device not powering on..."
                                 rows={4}
                             />
+                            <TextEditor id={"text"} />
                         </div>
+
 
                         {/* ---------- ACTIONS ---------- */}
                         <div className="flex justify-end gap-3">
