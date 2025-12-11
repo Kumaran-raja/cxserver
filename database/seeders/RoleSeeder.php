@@ -20,6 +20,7 @@ class RoleSeeder extends Seeder
         'dealer'      => ['label' => 'Dealer',                'description' => 'Manage deals.'],
         'devops'      => ['label' => 'DevOps',                'description' => 'Deploy & monitor.'],
         'restricted'  => ['label' => 'Restricted User',       'description' => 'Limited access.'],
+        'engineer'  => ['label' => 'Engineer',       'description' => 'Engineer.'],
     ];
 
     public function run(): void
