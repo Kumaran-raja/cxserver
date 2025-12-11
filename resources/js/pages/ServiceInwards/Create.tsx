@@ -104,7 +104,10 @@ export default function Create() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('service_inwards.store'));
+        post(route('service_inwards.store'), {
+            forceFormData: true,
+        });
+
     };
 
     // 🔥 Contact Create Dialog State
@@ -145,6 +148,8 @@ export default function Create() {
             onError: (err) => console.error(err),
         });
     };
+
+    const [selectedPhotos, setSelectedPhotos] = React.useState<File[]>([]);
 
 
     return (
@@ -307,13 +312,37 @@ export default function Create() {
 
                             {/* ---------- PHOTO URL ---------- */}
                             <div>
-                                <Label htmlFor="photo_url">Photo URL</Label>
+                                <Label htmlFor="photo_url">Photos</Label>
+
                                 <Input
                                     id="photo_url"
-                                    value={data.photo_url}
-                                    onChange={(e) => setData('photo_url', e.target.value)}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={(e) => {
+                                        const files = Array.from(e.target.files || []);
+                                        setSelectedPhotos(files);
+
+                                        // Store file names or send actual files later
+                                        setData("photo_url", files);
+                                    }}
                                 />
+                                {selectedPhotos.length > 0 && (
+                                    <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {selectedPhotos.map((file, index) => (
+                                            <div key={index} className="relative">
+                                                <img
+                                                    src={URL.createObjectURL(file)}
+                                                    alt={`preview-${index}`}
+                                                    className="h-32 w-full object-cover rounded-md border"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
                             </div>
+
                         </div>
 
                         {/* ---------- PASSWORDS ---------- */}
