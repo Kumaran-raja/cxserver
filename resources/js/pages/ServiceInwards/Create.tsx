@@ -16,6 +16,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft } from 'lucide-react';
 import ContactAutocomplete from '@/components/blocks/ContactAutocomplete';
+import { router } from '@inertiajs/react';
 
 interface Contact {
     id: number;
@@ -26,6 +27,15 @@ interface Contact {
     company: string | null;
     contact_type: { id: number; name: string };
 }
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import TextEditor from '@/components/ui/text-editor';
 
 interface UserOption {
     id: number;
@@ -53,7 +63,7 @@ export default function Create() {
         model: '',
         serial_no: '',
         passwords: '',
-        photo_url: '',
+        photo_url: [] as File[],
         observation: '',
         received_by: '',
         received_date: '',
@@ -91,14 +101,56 @@ export default function Create() {
         setData('contact_id', contact ? String(contact.id) : '');
     };
 
-    const handleContactCreate = (name: string) => {
-        alert(`Create new contact: "${name}"`);
-    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('service_inwards.store'));
+        post(route('service_inwards.store'), {
+            forceFormData: true,
+        });
+
     };
+
+    // 🔥 Contact Create Dialog State
+    const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
+
+    const [newContact, setNewContact] = React.useState({
+        name: "",
+        mobile: "",
+        phone: "",
+        company: "",
+        email: "",
+        contact_type_id: "",
+        active: true,
+        has_web_access: false,
+    });
+
+// When user clicks “Create New”
+    const handleContactCreate = (name: string) => {
+        setNewContact({
+            ...newContact,
+            name
+        });
+        setCreateDialogOpen(true);
+    };
+
+// Save new contact
+    const handleCreateContact = () => {
+        router.post(route("contacts.store"), newContact, {
+            onSuccess: (page: any) => {
+                const created = page.props?.contact;
+
+                if (created) {
+                    handleContactSelect(created); // auto-select
+                }
+
+                setCreateDialogOpen(false);
+            },
+            onError: (err) => console.error(err),
+        });
+    };
+
+    const [selectedPhotos, setSelectedPhotos] = React.useState<File[]>([]);
+
 
     return (
         <Layout>
@@ -260,13 +312,37 @@ export default function Create() {
 
                             {/* ---------- PHOTO URL ---------- */}
                             <div>
-                                <Label htmlFor="photo_url">Photo URL</Label>
+                                <Label htmlFor="photo_url">Photos</Label>
+
                                 <Input
                                     id="photo_url"
-                                    value={data.photo_url}
-                                    onChange={(e) => setData('photo_url', e.target.value)}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={(e) => {
+                                        const files = Array.from(e.target.files || []);
+                                        setSelectedPhotos(files);
+
+                                        // Store file names or send actual files later
+                                        setData("photo_url", files);
+                                    }}
                                 />
+                                {selectedPhotos.length > 0 && (
+                                    <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {selectedPhotos.map((file, index) => (
+                                            <div key={index} className="relative">
+                                                <img
+                                                    src={URL.createObjectURL(file)}
+                                                    alt={`preview-${index}`}
+                                                    className="h-32 w-full object-cover rounded-md border"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
                             </div>
+
                         </div>
 
                         {/* ---------- PASSWORDS ---------- */}
@@ -286,14 +362,21 @@ export default function Create() {
                             <Label htmlFor="observation">
                                 Observation / Issue Description
                             </Label>
-                            <Textarea
+                            {/*<Textarea*/}
+                            {/*    id="observation"*/}
+                            {/*    value={data.observation}*/}
+                            {/*    onChange={(e) => setData('observation', e.target.value)}*/}
+                            {/*    placeholder="Device not powering on..."*/}
+                            {/*    rows={4}*/}
+                            {/*/>*/}
+                            <TextEditor
                                 id="observation"
                                 value={data.observation}
-                                onChange={(e) => setData('observation', e.target.value)}
-                                placeholder="Device not powering on..."
-                                rows={4}
+                                onChange={(html) => setData("observation", html)}
                             />
+
                         </div>
+
 
                         {/* ---------- ACTIONS ---------- */}
                         <div className="flex justify-end gap-3">
@@ -307,6 +390,105 @@ export default function Create() {
                     </form>
                 </div>
             </div>
+
+            {/* 🔥 Create Contact Popup */}
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Create New Contact</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label>Name *</Label>
+                            <Input
+                                value={newContact.name}
+                                onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
+                                placeholder="John Doe"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label>Mobile *</Label>
+                                <Input
+                                    value={newContact.mobile}
+                                    onChange={(e) => setNewContact({ ...newContact, mobile: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label>Phone</Label>
+                                <Input
+                                    value={newContact.phone}
+                                    onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Company</Label>
+                            <Input
+                                value={newContact.company}
+                                onChange={(e) => setNewContact({ ...newContact, company: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Email</Label>
+                            <Input
+                                type="email"
+                                value={newContact.email}
+                                onChange={(e) => setNewContact({ ...newContact, email: e.target.value })}
+                                placeholder="john@example.com"
+                            />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label>Contact Type</Label>
+                            <Select
+                                value={newContact.contact_type_id}
+                                onValueChange={(value) => setNewContact({ ...newContact, contact_type_id: value })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="1">Customer</SelectItem>
+                                    <SelectItem value="2">Supplier</SelectItem>
+                                    <SelectItem value="3">Partner</SelectItem>
+                                    <SelectItem value="4">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="flex items-center space-x-6 pt-4">
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    checked={newContact.active}
+                                    onCheckedChange={(v) => setNewContact({ ...newContact, active: v })}
+                                />
+                                <Label>Active</Label>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    checked={newContact.has_web_access}
+                                    onCheckedChange={(v) => setNewContact({ ...newContact, has_web_access: v })}
+                                />
+                                <Label>Web Access</Label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleCreateContact}>Create Contact</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
         </Layout>
     );
 }

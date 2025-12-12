@@ -92,10 +92,14 @@ class ServiceInwardController extends Controller
     /** --------------------------------------------------------------
      *  STORE – validation + persist
      *  -------------------------------------------------------------- */
+
     public function store(Request $request)
     {
         $this->authorize('create', ServiceInward::class);
 
+        // ---------------------------
+        // 1. Validate input
+        // ---------------------------
         $data = $request->validate([
             'rma' => [
                 'required',
@@ -104,74 +108,74 @@ class ServiceInwardController extends Controller
                 'regex:/^[1-9]\d*(\.\d+)?$/',
                 function ($attribute, $value, $fail) {
                     if (!preg_match('/^\d+\.\d+$/', $value)) {
-                        $fail('RMA must be in format: <number>.<number> (e.g., 12700.1)');
+                        $fail('RMA must be like 12700.1');
                     }
                 },
             ],
-            'contact_id' => 'required|exists:contacts,id',
-            'material_type' => 'required|in:laptop,desktop,printer',
-            'brand' => 'nullable|string|max:255',
-            'model' => 'nullable|string|max:255',
-            'serial_no' => 'nullable|string|unique:service_inwards,serial_no',
-            'passwords' => 'nullable|string',
-            'photo_url' => 'nullable|url',
-            'observation' => 'nullable|string',
-            'received_by' => 'nullable|exists:users,id',
-            'received_date' => 'nullable|date',
+            'contact_id'        => 'required|exists:contacts,id',
+            'material_type'     => 'required|in:laptop,desktop,printer',
+            'brand'             => 'nullable|string|max:255',
+            'model'             => 'nullable|string|max:255',
+            'serial_no'         => 'nullable|string|unique:service_inwards,serial_no',
+            'passwords'         => 'nullable|string',
+            'photo_url.*'       => 'image|max:2048',
+            'observation'       => 'nullable|string',
+            'received_by'       => 'nullable|exists:users,id',
+            'received_date'     => 'nullable|date',
         ]);
 
-        // ← ADD THIS
-        preg_match('/^(\d+)\.(\d+(?:\.\d+)?)$/', $data['rma'], $matches);
-        $data['base_rma'] = (int)$matches[1];
-        $data['sub_item'] = (float)$matches[2];
+        // ---------------------------
+        // 2. Prevent array error
+        // ---------------------------
+        unset($data['photo_url']);  // Remove file array from insert
 
-// Fallback if regex fails
-        if (!$matches) {
-            $data['base_rma'] = (int)$data['rma'];
-            $data['sub_item'] = 0;
+        // ---------------------------
+        // 3. Extract base_rma & sub_item
+        // ---------------------------
+        preg_match('/^(\d+)\.(\d+(?:\.\d+)?)$/', $request->rma, $matches);
+
+        $data['base_rma'] = $matches ? (int)$matches[1] : (int)$request->rma;
+        $data['sub_item'] = $matches ? (float)$matches[2] : 0;
+
+        // ---------------------------
+        // 4. Auto set received_by
+        // ---------------------------
+        $data['received_by'] = $request->filled('received_by')
+            ? $request->received_by
+            : auth()->id();
+
+        // ---------------------------
+        // 5. Create inward WITHOUT photos
+        // ---------------------------
+        $inward = ServiceInward::create($data);
+
+        // ---------------------------
+        // 6. Handle photo upload
+        // ---------------------------
+        $photos = [];
+
+        if ($request->hasFile('photo_url')) {
+            foreach ($request->file('photo_url') as $file) {
+
+                // Save file to: storage/app/public/service_photos/{id}/
+                $path = $file->store("service_photos/{$inward->id}", 'public');
+
+                $photos[] = $path;
+            }
+
+            // Save JSON array of paths in DB
+            $inward->update([
+                'photo_url' => json_encode($photos)
+            ]);
         }
 
-        // ← CHANGE: only fallback to logged-in user if not provided
-        $data['received_by'] = $request->filled('received_by') ? $request->received_by : auth()->id();
-
-        ServiceInward::create($data);
-
+        // ---------------------------
+        // 7. Redirect
+        // ---------------------------
         return redirect()->route('service_inwards.index')
             ->with('success', 'Service inward created.');
     }
 
-    /** --------------------------------------------------------------
-     *  SHOW – detail page
-     *  -------------------------------------------------------------- */
-// In ServiceInwardController.php
-
-    public function show(ServiceInward $serviceInward, Request $request)
-    {
-        $this->authorize('view', $serviceInward);
-
-        // Eager load contact, receiver, and notes with user + replies
-        $serviceInward->load(['contact', 'receiver']);
-
-        $notes = $serviceInward->notes()
-            ->with(['user:id,name'])
-            ->whereNull('parent_id')
-            ->orderBy('created_at')
-            ->get()
-            ->map(function ($note) {
-                // Ensure replies is always a collection (never null)
-                $note->setRelation('replies', $note->replies ?? collect());
-                return $note;
-            });
-
-        return Inertia::render('ServiceInwards/Show', [
-            'inward' => $serviceInward,
-            'notes' => $notes, // Always loaded
-            'can' => [
-                'edit' => Gate::allows('update', $serviceInward),
-                'delete' => Gate::allows('delete', $serviceInward),
-            ],
-        ]);
-    }
 
     /** --------------------------------------------------------------
      *  EDIT – form
@@ -218,7 +222,7 @@ class ServiceInwardController extends Controller
             'model' => 'nullable|string|max:255',
             'serial_no' => 'nullable|string|unique:service_inwards,serial_no,' . $serviceInward->id,
             'passwords' => 'nullable|string',
-            'photo_url' => 'nullable|url',
+            'photo_url.*' => 'image|max:2048',
             'observation' => 'nullable|string',
             'received_by' => 'nullable|exists:users,id',
             'received_date' => 'nullable|date',
