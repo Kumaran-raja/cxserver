@@ -63,7 +63,7 @@ export default function Create() {
         model: '',
         serial_no: '',
         passwords: '',
-        photo_url: '',
+        photo_url: [] as File[],
         observation: '',
         received_by: '',
         received_date: '',
