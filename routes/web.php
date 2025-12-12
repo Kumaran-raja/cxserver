@@ -98,7 +98,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('service_inwards', ServiceInwardController::class)
-        ->names('service_inwards');
+        ->names('service_inwards')->except(['show']);
 
     Route::post('service_inwards/{id}/restore', [ServiceInwardController::class, 'restore'])
         ->name('service_inwards.restore');
@@ -120,6 +120,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/service-inwards/search', [App\Http\Controllers\ServiceInwardController::class, 'search'])
         ->name('service_inwards.search');
+
+    Route::get('service_inwards/{serviceInward}/show', [ServiceInwardController::class, 'show'])
+        ->name('service_inwards.show');
 
 });
 

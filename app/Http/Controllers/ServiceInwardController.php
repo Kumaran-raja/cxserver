@@ -178,6 +178,38 @@ class ServiceInwardController extends Controller
 
 
     /** --------------------------------------------------------------
+     *  SHOW – detailed view of a single Service Inward
+     *  -------------------------------------------------------------- */
+    public function show(ServiceInward $serviceInward)
+    {
+        $this->authorize('view', $serviceInward);
+
+        // Eager load relationships needed for display
+        $serviceInward->load(['contact', 'receiver']);
+
+        // Decode photo URLs if they exist (stored as JSON)
+        $photos = $serviceInward->photo_url
+            ? json_decode($serviceInward->photo_url, true)
+            : [];
+
+        // Generate full public URLs for photos
+        $photoUrls = array_map(function ($path) {
+            return $path ? asset('storage/' . $path) : null;
+        }, $photos);
+
+        return Inertia::render('ServiceInwards/Show', [
+            'inward' => [
+                ...$serviceInward->toArray(),
+                'photo_urls' => array_filter($photoUrls), // Remove any nulls
+            ],
+            'can' => [
+                'update' => Gate::allows('update', $serviceInward),
+                'delete' => Gate::allows('delete', $serviceInward),
+            ],
+        ]);
+    }
+
+    /** --------------------------------------------------------------
      *  EDIT – form
      *  -------------------------------------------------------------- */
     public function edit(ServiceInward $serviceInward)
