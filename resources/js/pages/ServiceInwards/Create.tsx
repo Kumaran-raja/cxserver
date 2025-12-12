@@ -362,14 +362,19 @@ export default function Create() {
                             <Label htmlFor="observation">
                                 Observation / Issue Description
                             </Label>
-                            <Textarea
+                            {/*<Textarea*/}
+                            {/*    id="observation"*/}
+                            {/*    value={data.observation}*/}
+                            {/*    onChange={(e) => setData('observation', e.target.value)}*/}
+                            {/*    placeholder="Device not powering on..."*/}
+                            {/*    rows={4}*/}
+                            {/*/>*/}
+                            <TextEditor
                                 id="observation"
                                 value={data.observation}
-                                onChange={(e) => setData('observation', e.target.value)}
-                                placeholder="Device not powering on..."
-                                rows={4}
+                                onChange={(html) => setData("observation", html)}
                             />
-                            <TextEditor id={"text"} />
+
                         </div>
 
 

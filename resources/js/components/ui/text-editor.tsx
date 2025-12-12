@@ -32,7 +32,16 @@ import FloatingInput from "./floating-input";
 //     }
 // }
 
-export default function TextEditor({id}: { id: string }) {
+export default function TextEditor({
+                                       id,
+                                       value,
+                                       onChange,
+                                   }: {
+    id: string;
+    value: string;
+    onChange: (val: string) => void;
+}) {
+
     const [title, setTitle] = useState("");
     const [rawMessage, setRawMessage] = useState("");
     const editorRef = useRef<HTMLDivElement>(null);
@@ -55,6 +64,12 @@ export default function TextEditor({id}: { id: string }) {
 //   const imageInputRef = useRef<HTMLInputElement | null>(null);
 //   const videoInputRef = useRef<HTMLInputElement | null>(null);
 
+    useEffect(() => {
+        if (editorRef.current && value !== editorRef.current.innerHTML) {
+            editorRef.current.innerHTML = value || "";
+        }
+    }, [value]);
+
     // Function to apply formatting
     const applyFormatting = (
         command: string,
@@ -73,6 +88,7 @@ export default function TextEditor({id}: { id: string }) {
         } else if (persist) {
             document.execCommand(command, false, value);
         }
+        onChange(editorRef.current!.innerHTML);
 
         setRawMessage(editorRef.current.innerHTML);
     };
@@ -175,6 +191,8 @@ export default function TextEditor({id}: { id: string }) {
 
         // After modification, update the rawMessage from the DOM
         setRawMessage(editorRef.current.innerHTML);
+        onChange(editorRef.current!.innerHTML);
+
     };
 
     const handleUppercase = () => {
@@ -233,6 +251,7 @@ export default function TextEditor({id}: { id: string }) {
         selection.removeAllRanges();
         selection.addRange(range);
 
+        onChange(editorRef.current!.innerHTML);
         setRawMessage(editorRef.current.innerHTML);
     };
 
@@ -265,6 +284,7 @@ export default function TextEditor({id}: { id: string }) {
                 selection?.addRange(newRange);
 
                 editorRef.current.focus();
+                onChange(editorRef.current!.innerHTML);
                 setRawMessage(editorRef.current.innerHTML);
             }
         }
@@ -313,7 +333,6 @@ export default function TextEditor({id}: { id: string }) {
         editorRef.current.appendChild(mediaElement);
         editorRef.current.appendChild(document.createElement("br"));
     };
-
     const handleContentChange = useCallback(() => {
         const editor = editorRef.current;
         if (!editor) return;
@@ -323,36 +342,41 @@ export default function TextEditor({id}: { id: string }) {
 
         const range = selection.getRangeAt(0);
 
-        // Insert a marker span at the caret position
+        // Prevent inserting multiple markers accidentally
+        const existingMarker = editor.querySelector("#caret-marker");
+        if (existingMarker) existingMarker.remove();
+
+        // Insert temporary caret marker
         const marker = document.createElement("span");
         marker.id = "caret-marker";
-        marker.appendChild(document.createTextNode("\u200B")); // zero-width space
+        marker.textContent = "\u200B";
         range.insertNode(marker);
 
-        // Now update HTML
+        // Save updated HTML
         const newHtml = editor.innerHTML;
         if (newHtml !== rawMessage) {
             setRawMessage(newHtml);
+            onChange(newHtml); // also send to parent
+            localStorage.setItem(`editor-draft-${id}`, newHtml);
         }
 
+        // Restore caret position after DOM update
         requestAnimationFrame(() => {
-            // Find the marker
-            const newMarker = editor.querySelector("#caret-marker");
-            if (!newMarker) return;
+            const markerEl = editor.querySelector("#caret-marker");
+            if (!markerEl) return;
 
-            // Restore caret after marker
-            const range = document.createRange();
-            range.setStartAfter(newMarker);
-            range.collapse(true);
+            const newRange = document.createRange();
+            newRange.setStartAfter(markerEl);
+            newRange.collapse(true);
 
             const sel = window.getSelection();
             sel?.removeAllRanges();
-            sel?.addRange(range);
+            sel?.addRange(newRange);
 
-            // Clean up marker
-            newMarker.remove();
+            // Cleanup
+            markerEl.remove();
         });
-    }, [rawMessage]);
+    }, [rawMessage, id, onChange]);
 
     useEffect(() => {
         const checkSelection = () => {
@@ -427,6 +451,7 @@ export default function TextEditor({id}: { id: string }) {
         newRange.selectNodeContents(span);
         newRange.collapse(false);
         selection.addRange(newRange);
+        onChange(editorRef.current!.innerHTML);
         setRawMessage(editorRef.current!.innerHTML);
     };
 
@@ -542,12 +567,14 @@ export default function TextEditor({id}: { id: string }) {
 
     // Autosave and draft
     useEffect(() => {
-        const saved = localStorage.getItem("editor-draft");
+        const saved = localStorage.getItem(`editor-draft-${id}`);
+
         if (saved && editorRef.current) {
             setRawMessage(saved);
             editorRef.current.innerHTML = saved;
+            onChange(saved); // sync to parent
         }
-    }, []);
+    }, [id]);
 
     useEffect(() => {
         localStorage.setItem("editor-draft", rawMessage);
@@ -713,6 +740,7 @@ export default function TextEditor({id}: { id: string }) {
 
         range.deleteContents();
         range.insertNode(table);
+        onChange(editorRef.current!.innerHTML);
         setRawMessage(editorRef.current.innerHTML);
     };
 
@@ -753,6 +781,7 @@ export default function TextEditor({id}: { id: string }) {
         }
 
         tbody?.appendChild(newRow);
+        onChange(editorRef.current!.innerHTML);
         setRawMessage(editorRef.current!.innerHTML);
     };
 
@@ -778,6 +807,7 @@ export default function TextEditor({id}: { id: string }) {
             rows[i].appendChild(cell);
         }
 
+        onChange(editorRef.current!.innerHTML);
         setRawMessage(editorRef.current!.innerHTML);
     };
 
@@ -786,6 +816,7 @@ export default function TextEditor({id}: { id: string }) {
         if (!table || !editorRef.current) return;
 
         table.remove();
+        onChange(editorRef.current!.innerHTML);
         setRawMessage(editorRef.current.innerHTML);
     };
 
@@ -798,6 +829,7 @@ export default function TextEditor({id}: { id: string }) {
 
         if (rowCount > 0) {
             tbody?.deleteRow(rowCount - 1);
+            onChange(editorRef.current!.innerHTML);
             setRawMessage(editorRef.current!.innerHTML);
         }
     };
