@@ -62,6 +62,7 @@
         "clsx": "^2.1.1",
         "concurrently": "^9.0.1",
         "date-fns": "^4.1.0",
+        "dompurify": "^3.3.1",
         "framer-motion": "^12.23.24",
         "globals": "^15.14.0",
         "input-otp": "^1.4.2",

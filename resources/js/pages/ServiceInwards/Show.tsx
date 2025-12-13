@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Edit, Image } from 'lucide-react';
 import { format } from 'date-fns';
 import ServiceInwardNotes from './ServiceInwardNotes'; // ← Fixed path
-
+import DOMPurify from "dompurify";
 interface ServiceInward {
     id: number;
     rma: string;
@@ -17,7 +17,8 @@ interface ServiceInward {
     model: string | null;
     serial_no: string | null;
     passwords: string | null;
-    photo_url: string | null;
+    photo_urls: string[] | null;
+
     observation: string | null;
     received_date: string | null;
     contact: { name: string; company: string | null; mobile: string; email: string | null };
@@ -64,7 +65,7 @@ export default function Show() {
                     </div>
 
                     {/* Details Card */}
-                    <div className="space-y-6 rounded-lg bg-white p-6 shadow">
+                    <div className="space-y-6 rounded-lg bg-white text-black p-6 shadow">
                         <div className="flex items-start justify-between">
                             <div>
                                 <h1 className="text-2xl font-bold">
@@ -80,7 +81,7 @@ export default function Show() {
                                         : '—'}
                                 </p>
                             </div>
-                            <Badge variant="outline" className="text-lg">
+                            <Badge variant="outline" className="text-lg text-black">
                                 {inward.material_type.toUpperCase()}
                             </Badge>
                         </div>
@@ -123,28 +124,36 @@ export default function Show() {
                             </div>
                         </div>
 
-                        {inward.photo_url && (
+                        {inward.photo_urls && inward.photo_urls.length > 0 && (
                             <div>
-                                <h3 className="mb-2 font-semibold">Photo</h3>
-                                <a
-                                    href={inward.photo_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-block"
-                                >
-                                    <div className="flex h-48 w-64 items-center justify-center rounded-xl border-2 border-dashed bg-gray-200">
-                                        <Image className="h-12 w-12 text-gray-400" />
-                                    </div>
-                                </a>
+                                <h3 className="mb-2 font-semibold">Photos</h3>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    {inward.photo_urls.map((url: string, index: number) => (
+                                        <a
+                                            key={index}
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <img
+                                                src={url}
+                                                alt={`photo-${index}`}
+                                                className="h-32 w-full object-cover rounded-md border hover:opacity-80 transition"
+                                            />
+                                        </a>
+                                    ))}
+                                </div>
                             </div>
                         )}
+
 
                         {inward.passwords && (
                             <div>
                                 <h3 className="mb-2 font-semibold">
                                     Access Info
                                 </h3>
-                                <pre className="rounded bg-muted p-3 text-sm whitespace-pre-wrap">
+                                <pre className="rounded bg-muted p-3 text-sm whitespace-pre-wrap text-white">
                                     {inward.passwords}
                                 </pre>
                             </div>
@@ -155,9 +164,9 @@ export default function Show() {
                                 <h3 className="mb-2 font-semibold">
                                     Observation
                                 </h3>
-                                <p className="whitespace-pre-wrap">
-                                    {inward.observation}
-                                </p>
+                                <div className="whitespace-pre-wrap"  dangerouslySetInnerHTML={{
+                                    __html: DOMPurify.sanitize(inward.observation ?? "")
+                                }}/>
                             </div>
                         )}
 

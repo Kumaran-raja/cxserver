@@ -63,21 +63,27 @@ export default function TextEditor({
     const [showTableDropdown, setShowTableDropdown] = useState(false);
 //   const imageInputRef = useRef<HTMLInputElement | null>(null);
 //   const videoInputRef = useRef<HTMLInputElement | null>(null);
+    const [isFormatting, setIsFormatting] = useState(false);
 
     useEffect(() => {
+        if (isFormatting) return; // 🚫 DO NOT sync while formatting
+
         if (editorRef.current && value !== editorRef.current.innerHTML) {
             editorRef.current.innerHTML = value || "";
         }
-    }, [value]);
+    }, [value, isFormatting]);
+
 
     // Function to apply formatting
     const applyFormatting = (
         command: string,
         value?: string,
-        persist?: boolean
+        persist?: boolean,
+        skipSave: boolean = true
     ) => {
         if (!editorRef.current) return;
 
+        setIsFormatting(true); // 🚫 prevent autosave
         editorRef.current.focus();
 
         const selection = window.getSelection();
@@ -88,12 +94,24 @@ export default function TextEditor({
         } else if (persist) {
             document.execCommand(command, false, value);
         }
-        onChange(editorRef.current!.innerHTML);
 
+        setTimeout(() => {
+            setIsFormatting(false); // ✅ allow autosave again (next keystroke)
+        }, 0);
+
+        if (skipSave) return;
+
+        onChange(editorRef.current.innerHTML);
         setRawMessage(editorRef.current.innerHTML);
     };
 
-    const toggleBold = () => {
+
+
+    const toggleBold = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+
+        setIsFormatting(true);
+
         const selection = window.getSelection();
         const hasTextSelected = selection && !selection.isCollapsed;
 
@@ -106,9 +124,14 @@ export default function TextEditor({
             setIsBold(newVal);
             applyFormatting("bold", undefined, true);
         }
+
+        setTimeout(() => setIsFormatting(false), 0);
     };
 
-    const toggleItalic = () => {
+
+
+    const toggleItalic = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         const selection = window.getSelection();
         const hasTextSelected = selection && !selection.isCollapsed;
 
@@ -119,11 +142,12 @@ export default function TextEditor({
         } else {
             const newVal = !isItalic;
             setIsItalic(newVal);
-            applyFormatting("italic", undefined, true);
+            applyFormatting("italic", undefined, true,true);
         }
     };
 
-    const toggleUnderline = () => {
+    const toggleUnderline = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         const selection = window.getSelection();
         const hasTextSelected = selection && !selection.isCollapsed;
 
@@ -138,7 +162,8 @@ export default function TextEditor({
         }
     };
 
-    const toggleAlignLeft = () => {
+    const toggleAlignLeft = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         setIsJustifyLeft(true);
         setIsJustifyCenter(false);
         setIsJustifyRight(false);
@@ -146,7 +171,8 @@ export default function TextEditor({
         applyFormatting("justifyLeft", undefined, true);
     };
 
-    const toggleAlignCenter = () => {
+    const toggleAlignCenter = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         setIsJustifyLeft(false);
         setIsJustifyCenter(true);
         setIsJustifyRight(false);
@@ -154,7 +180,8 @@ export default function TextEditor({
         applyFormatting("justifyCenter", undefined, true);
     };
 
-    const toggleAlignRight = () => {
+    const toggleAlignRight = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         setIsJustifyLeft(false);
         setIsJustifyCenter(false);
         setIsJustifyRight(true);
@@ -162,7 +189,8 @@ export default function TextEditor({
         applyFormatting("justifyRight", undefined, true);
     };
 
-    const toggleAlignFull = () => {
+    const toggleAlignFull = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         setIsJustifyLeft(false);
         setIsJustifyCenter(false);
         setIsJustifyRight(false);
@@ -171,7 +199,11 @@ export default function TextEditor({
     };
 
     // Helper function to transform selected text (for uppercase/lowercase)
-    const transformSelectedText = (transformFn: (text: string) => string) => {
+    const transformSelectedText = (
+        e: React.MouseEvent<HTMLButtonElement>,
+        transformFn: (text: string) => string
+    ) => {
+        e.preventDefault();
         const selection = window.getSelection();
         if (!selection || selection.rangeCount === 0 || !editorRef.current) return;
 
@@ -195,13 +227,14 @@ export default function TextEditor({
 
     };
 
-    const handleUppercase = () => {
-        transformSelectedText((text) => text.toUpperCase());
+    const handleUppercase = (e: React.MouseEvent<HTMLButtonElement>) => {
+        transformSelectedText(e, (text) => text.toUpperCase());
     };
 
-    const handleLowercase = () => {
-        transformSelectedText((text) => text.toLowerCase());
+    const handleLowercase = (e: React.MouseEvent<HTMLButtonElement>) => {
+        transformSelectedText(e, (text) => text.toLowerCase());
     };
+
 
     const handleTextColorInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         const color = e.target.value;
@@ -215,7 +248,8 @@ export default function TextEditor({
         applyFormatting("backColor", color);
     };
 
-    const applyLinkToSelection = () => {
+    const applyLinkToSelection = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         const url = prompt("Enter the URL:");
         if (!url || !editorRef.current) return;
 
@@ -255,7 +289,11 @@ export default function TextEditor({
         setRawMessage(editorRef.current.innerHTML);
     };
 
-    const handleToggleListMode = (type: "ul" | "ol") => {
+    const handleToggleListMode = (
+        e: React.MouseEvent<HTMLButtonElement>,
+        type: "ul" | "ol"
+    ) => {
+        e.preventDefault();
         setListMode((prev) => (prev === type ? null : type));
 
         if (editorRef.current) {
@@ -290,7 +328,8 @@ export default function TextEditor({
         }
     };
 
-    const handleImage = () => {
+    const handleImage = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         const input = document.createElement("input");
         input.type = "file";
         input.accept = "image/*";
@@ -301,7 +340,8 @@ export default function TextEditor({
         input.click();
     };
 
-    const handleVideo = () => {
+    const handleVideo = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         const input = document.createElement("input");
         input.type = "file";
         input.accept = "video/*";
@@ -334,6 +374,8 @@ export default function TextEditor({
         editorRef.current.appendChild(document.createElement("br"));
     };
     const handleContentChange = useCallback(() => {
+        if (isFormatting) return;   // ⛔ STOP AUTOSAVE during bold/italic clicks
+
         const editor = editorRef.current;
         if (!editor) return;
 
@@ -356,7 +398,7 @@ export default function TextEditor({
         const newHtml = editor.innerHTML;
         if (newHtml !== rawMessage) {
             setRawMessage(newHtml);
-            onChange(newHtml); // also send to parent
+            onChange(newHtml);
             localStorage.setItem(`editor-draft-${id}`, newHtml);
         }
 
@@ -376,7 +418,8 @@ export default function TextEditor({
             // Cleanup
             markerEl.remove();
         });
-    }, [rawMessage, id, onChange]);
+    }, [rawMessage, id, onChange, isFormatting]);
+
 
     useEffect(() => {
         const checkSelection = () => {
@@ -595,7 +638,8 @@ export default function TextEditor({
         }
     };
 
-    const insertBasicTable = () => {
+    const insertBasicTable = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         if (!editorRef.current) return;
         const selection = window.getSelection();
         const range = selection?.getRangeAt(0);
@@ -761,7 +805,8 @@ export default function TextEditor({
         return null;
     };
 
-    const addRowToSelectedTable = () => {
+    const addRowToSelectedTable = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         const table = getSelectedTable();
         if (!table) return;
 
@@ -785,7 +830,8 @@ export default function TextEditor({
         setRawMessage(editorRef.current!.innerHTML);
     };
 
-    const addColToSelectedTable = () => {
+    const addColToSelectedTable= (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         const table = getSelectedTable();
         if (!table) return;
 
@@ -811,7 +857,8 @@ export default function TextEditor({
         setRawMessage(editorRef.current!.innerHTML);
     };
 
-    const removeTable = () => {
+    const removeTable = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         const table = getSelectedTable();
         if (!table || !editorRef.current) return;
 
@@ -820,7 +867,8 @@ export default function TextEditor({
         setRawMessage(editorRef.current.innerHTML);
     };
 
-    const removeLastRowFromSelectedTable = () => {
+    const removeLastRowFromSelectedTable = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         const table = getSelectedTable();
         if (!table) return;
 
@@ -834,7 +882,8 @@ export default function TextEditor({
         }
     };
 
-    const removeLastColFromSelectedTable = () => {
+    const removeLastColFromSelectedTable = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();
         const table = getSelectedTable();
         if (!table) return;
 
@@ -1040,7 +1089,7 @@ export default function TextEditor({
                             <Tooltip
                                 content={"Underline"}>
                                 <ImageBtn
-                                    onClick={() => handleToggleListMode("ul")}
+                                    onClick={(e) => handleToggleListMode(e, "ul")}
                                     icon={"listul"}
                                     className={`p-2 hover:bg-gray-300 rounded-md ${
                                         listMode === "ul"
@@ -1053,7 +1102,7 @@ export default function TextEditor({
                                 content={"Align Left"}
                             >
                                 <ImageBtn
-                                    onClick={() => handleToggleListMode("ol")}
+                                    onClick={(e) => handleToggleListMode(e, "ol")}
                                     icon={"listol"}
                                     className={`p-2 hover:bg-gray-300 rounded-md ${
                                         listMode === "ol"
@@ -1083,7 +1132,10 @@ export default function TextEditor({
                                 onMouseLeave={() => setShowTableDropdown(false)}
                             >
                                 <ImageBtn
-                                    onClick={() => setShowTableDropdown((prev) => !prev)}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        setShowTableDropdown((prev) => !prev);
+                                    }}
                                     className={`p-2 hover:bg-gray-300 rounded-md ${
                                         isLineThrough
                                             ? "border border-ring/50 bg-foreground/20"

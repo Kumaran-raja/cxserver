@@ -16,6 +16,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useRoute } from 'ziggy-js';
 import React from 'react';
 import ContactAutocomplete from '@/components/blocks/ContactAutocomplete';
+import TextEditor from '@/components/ui/text-editor';
 
 interface Contact {
     id: number;
@@ -271,12 +272,17 @@ export default function Edit() {
                         {/* OBSERVATION */}
                         <div>
                             <Label htmlFor="observation">Observation / Issue Description</Label>
-                            <Textarea
+                            {/*<Textarea*/}
+                            {/*    id="observation"*/}
+                            {/*    value={data.observation}*/}
+                            {/*    onChange={(e) => setData('observation', e.target.value)}*/}
+                            {/*    placeholder="Device not powering on..."*/}
+                            {/*    rows={4}*/}
+                            {/*/>*/}
+                            <TextEditor
                                 id="observation"
                                 value={data.observation}
-                                onChange={(e) => setData('observation', e.target.value)}
-                                placeholder="Device not powering on..."
-                                rows={4}
+                                onChange={(html) => setData("observation", html)}
                             />
                         </div>
 
