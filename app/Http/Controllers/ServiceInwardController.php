@@ -274,6 +274,23 @@ class ServiceInwardController extends Controller
             $data['received_by'] = $request->received_by;
         }
 
+        if ($request->hasFile('photo_url')) {
+
+            // Existing photos
+            $existingPhotos = $serviceInward->photo_url
+                ? json_decode($serviceInward->photo_url, true)
+                : [];
+
+            foreach ($request->file('photo_url') as $file) {
+                $path = $file->store("service_photos/{$serviceInward->id}", 'public');
+                $existingPhotos[] = $path;
+            }
+
+            $serviceInward->update([
+                'photo_url' => json_encode($existingPhotos)
+            ]);
+        }
+
         $serviceInward->update($data);
 
         return redirect()->route('service_inwards.index')

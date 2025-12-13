@@ -65,7 +65,8 @@ export default function Edit() {
     const { inward, contacts, users } = usePage().props as unknown as EditPageProps;
 
     /* ---------- INITIAL FORM DATA ---------- */
-    const { data, setData, put, processing, errors } = useForm({
+    const { data, setData, post, processing, errors } = useForm({
+        _method: 'put',
         rma: inward.rma,
         contact_id: String(inward.contact_id),
         material_type: inward.material_type,
@@ -100,8 +101,24 @@ export default function Edit() {
     /* ---------- SUBMIT ---------- */
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        put(route('service_inwards.update', inward.id));
+
+        post(route('service_inwards.update', inward.id), {
+            _method: 'put',
+            forceFormData: true,
+        });
     };
+
+    const [selectedPhotos, setSelectedPhotos] = React.useState<File[]>([]);
+    const existingPhotos: string[] = React.useMemo(() => {
+        if (!inward.photo_url) return [];
+
+        try {
+            const paths = JSON.parse(inward.photo_url);
+            return paths.map((p: string) => `/storage/${p}`);
+        } catch {
+            return [];
+        }
+    }, [inward.photo_url]);
 
     return (
         <Layout>
@@ -247,14 +264,50 @@ export default function Edit() {
 
                             {/* PHOTO URL */}
                             <div>
-                                <Label htmlFor="photo_url">Photo URL</Label>
+                                <Label htmlFor="photo_url">Add More Photos</Label>
+
                                 <Input
                                     id="photo_url"
-                                    value={data.photo_url}
-                                    onChange={(e) => setData('photo_url', e.target.value)}
-                                    placeholder="https://..."
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={(e) => {
+                                        const files = Array.from(e.target.files || []);
+                                        setSelectedPhotos(files);
+                                        setData("photo_url", files); // 👈 important for backend
+                                    }}
                                 />
+                                
+                                {existingPhotos.length > 0 && (
+                                    <div>
+                                        <Label>Existing Photos</Label>
+                                        <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                                            {existingPhotos.map((url, index) => (
+                                                <img
+                                                    key={index}
+                                                    src={url}
+                                                    alt={`existing-${index}`}
+                                                    className="h-32 w-full object-cover rounded-md border"
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedPhotos.length > 0 && (
+                                    <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        {selectedPhotos.map((file, index) => (
+                                            <img
+                                                key={index}
+                                                src={URL.createObjectURL(file)}
+                                                alt={`preview-${index}`}
+                                                className="h-32 w-full object-cover rounded-md border"
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
+
                         </div>
 
                         {/* PASSWORDS */}
